@@ -4,14 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6b666a48-95d4-4e4c-9a9f-4d13f81156ab" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/bot_csi.iml" afterDir="false" />
+    <list default="true" id="6b666a48-95d4-4e4c-9a9f-4d13f81156ab" name="Changes" comment="chore: added license">
+      <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,6 +24,9 @@
   </component>
   <component name="MacroExpansionManager">
     <option name="directoryName" value="paqfg7ku" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectColorInfo"><![CDATA[{
   "associatedIndex": 2
@@ -67,19 +64,59 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1696332050952</updated>
-      <workItem from="1696332051980" duration="6399000" />
+      <workItem from="1696332051980" duration="6971000" />
     </task>
+    <task id="LOCAL-00001" summary="feat: implemented links shortcuts">
+      <option name="closed" value="true" />
+      <created>1696338468754</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1696338468754</updated>
+    </task>
+    <task id="LOCAL-00002" summary="fix: shadowing">
+      <option name="closed" value="true" />
+      <created>1696338565118</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1696338565118</updated>
+    </task>
+    <task id="LOCAL-00003" summary="chore: ide files">
+      <option name="closed" value="true" />
+      <created>1696338579722</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1696338579722</updated>
+    </task>
+    <task id="LOCAL-00004" summary="chore: added license">
+      <option name="closed" value="true" />
+      <created>1696338681042</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1696338681042</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="feat: implemented links shortcuts" />
+    <MESSAGE value="fix: shadowing" />
+    <MESSAGE value="chore: ide files" />
+    <MESSAGE value="chore: added license" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: added license" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/bot.py</url>
-          <line>37</line>
+          <line>22</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>

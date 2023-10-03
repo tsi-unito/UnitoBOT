@@ -1,27 +1,12 @@
-# todo move to file or load from env
-import logging
-from logging import Logger
-from typing import Dict
-
 from telegram import *
 
 from telegram.ext import *
 from telegram.constants import *
 
 
-# write a function that given a filesystem path loads the API_KEY from a file
-# or from an environment variable
-
 def load_api_key(path: str) -> str:
     with open(path, 'r') as f:
         return f.read().strip()
-
-
-# Enable logging
-# logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#                     level=logging.INFO)
-#
-# logger: Logger = logging.getLogger('CSI Bot')
 
 
 async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
