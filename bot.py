@@ -71,9 +71,6 @@ def main(api_key: str) -> None:
 
 
 if __name__ == '__main__':
-    # accept the path to the API_KEY as a command line argument
-    import sys
-
-    api_key_path: str = "./api_key"  # sys.argv[1]
-    key = load_api_key(api_key_path)
-    main(key)
+    _api_key_path: str = "./api_key"
+    _key = load_api_key(_api_key_path)
+    main(_key)
