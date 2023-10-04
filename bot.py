@@ -1,3 +1,4 @@
+import telegram.error
 from telegram import *
 
 from telegram.ext import *
@@ -13,7 +14,7 @@ async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f'Hello {update.effective_user.first_name}')
 
 
-async def link_gruppi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def link_gruppi(update: Update, _):
     """
     Answers the user with the group required.
 
@@ -41,7 +42,38 @@ async def link_gruppi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     link = links.get(command)
-    await update.message.reply_text(link, quote=True)
+    # Got the correct link. Now let's see how to behave...
+
+    message_in_group = update.message.chat_id != update.message.from_user.id
+
+    if message_in_group:
+        reply_message = update.message.reply_to_message
+        # This is a temporary fix because the library tells us that the user has replied with the command to another
+        # user, while in reality they did not. Right now we check if the reply is towards a message/sticker/audio
+        is_replying = reply_message is not None and (
+                reply_message.text is not None or
+                reply_message.sticker is not None or
+                reply_message.audio is not None)
+
+        if is_replying:
+            # The id of the message we should reply to, and NOT the invoker of the command
+            original_message = reply_message.message_id
+            await update.message.reply_text(f"[Ecco il link]({link})\\!",
+                                            parse_mode=ParseMode.MARKDOWN_V2,
+                                            reply_to_message_id=original_message)
+        else:
+            user_name = update.message.from_user.full_name
+            user_id = update.message.from_user.id
+            await update.message.reply_text(f"[Ecco qua il link]({link}) [{user_name}](tg://user?id={user_id})\\!",
+                                            quote=False,
+                                            parse_mode=ParseMode.MARKDOWN_V2)
+    else:
+        await update.message.reply_text(f"[Ecco il link]({link})\\!", parse_mode=ParseMode.MARKDOWN_V2)
+
+    try:
+        await update.message.delete()
+    except telegram.error.BadRequest:
+        print(f"Errore durante la cancellazione del messaggio {update.message.id}")
 
 
 def main(api_key: str) -> None:
