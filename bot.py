@@ -21,7 +21,8 @@ async def link_gruppi(update: Update, _):
     This command has a pre-determined list of commands that are expected to be used frequently.
     """
     # We need to recover the command to understand with which group to answer
-    entities: dict[MessageEntity, str] = update.message.parse_entities()
+    message = update.message
+    entities: dict[MessageEntity, str] = message.parse_entities()
 
     command: str | None = None
     # The bot api doesn't have a way to generically filter the entities by type, so the only way is to write it
@@ -44,11 +45,11 @@ async def link_gruppi(update: Update, _):
     link = links.get(command)
     # Got the correct link. Now let's see how to behave...
 
-    message_in_group = update.message.chat_id != update.message.from_user.id
-    message_thread = update.message.message_thread_id
+    message_in_group = message.chat_id != message.from_user.id
+    message_thread = message.message_thread_id
 
     if message_in_group:
-        reply_message = update.message.reply_to_message
+        reply_message = message.reply_to_message
         # This is a temporary fix because the library tells us that the user has replied with the command to another
         # user, while in reality they did not. Right now we check if the reply is towards a message/sticker/audio
         is_replying = reply_message is not None and (
@@ -59,23 +60,23 @@ async def link_gruppi(update: Update, _):
         if is_replying:
             # The id of the message we should reply to, and NOT the invoker of the command
             original_message = reply_message.message_id
-            await update.message.reply_text(f"[Ecco il link]({link})\\!",
-                                            parse_mode=ParseMode.MARKDOWN_V2,
-                                            reply_to_message_id=original_message)
+            await message.reply_text(f"[Ecco il link]({link})\\!",
+                                     parse_mode=ParseMode.MARKDOWN_V2,
+                                     reply_to_message_id=original_message)
         else:
-            user_name = update.message.from_user.full_name
-            user_id = update.message.from_user.id
-            await update.message.reply_text(f"[Ecco qua il link]({link}) [{user_name}](tg://user?id={user_id})\\!",
-                                            quote=False,
-                                            message_thread_id=message_thread,
-                                            parse_mode=ParseMode.MARKDOWN_V2)
+            user_name = message.from_user.full_name
+            user_id = message.from_user.id
+            await message.reply_text(f"[Ecco qua il link]({link}) [{user_name}](tg://user?id={user_id})\\!",
+                                     quote=False,
+                                     message_thread_id=message_thread,
+                                     parse_mode=ParseMode.MARKDOWN_V2)
     else:
-        await update.message.reply_text(f"[Ecco il link]({link})\\!", parse_mode=ParseMode.MARKDOWN_V2)
+        await message.reply_text(f"[Ecco il link]({link})\\!", parse_mode=ParseMode.MARKDOWN_V2)
 
     try:
-        await update.message.delete()
+        await message.delete()
     except telegram.error.BadRequest:
-        print(f"Errore durante la cancellazione del messaggio {update.message.id}")
+        print(f"Errore durante la cancellazione del messaggio {message.id}")
 
 
 def main(api_key: str) -> None:
