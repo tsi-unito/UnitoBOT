@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6b666a48-95d4-4e4c-9a9f-4d13f81156ab" name="Changes" comment="chore: cleanup">
+    <list default="true" id="6b666a48-95d4-4e4c-9a9f-4d13f81156ab" name="Changes" comment="refactor: introduced local variable for message">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
     </list>
@@ -65,7 +65,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1696332050952</updated>
-      <workItem from="1696332051980" duration="12929000" />
+      <workItem from="1696332051980" duration="18869000" />
     </task>
     <task id="LOCAL-00001" summary="feat: implemented links shortcuts">
       <option name="closed" value="true" />
@@ -115,7 +115,31 @@
       <option name="project" value="LOCAL" />
       <updated>1696339037886</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="feat: improved mentioning">
+      <option name="closed" value="true" />
+      <created>1696419846557</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1696419846557</updated>
+    </task>
+    <task id="LOCAL-00008" summary="fix: fixed bot not answering in correct thread">
+      <option name="closed" value="true" />
+      <created>1696420190714</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1696420190714</updated>
+    </task>
+    <task id="LOCAL-00009" summary="refactor: introduced local variable for message">
+      <option name="closed" value="true" />
+      <created>1696420260483</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1696420260483</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -127,21 +151,24 @@
     <MESSAGE value="chore: ide files" />
     <MESSAGE value="chore: added license" />
     <MESSAGE value="chore: cleanup" />
-    <option name="LAST_COMMIT_MESSAGE" value="chore: cleanup" />
+    <MESSAGE value="feat: improved mentioning" />
+    <MESSAGE value="fix: fixed bot not answering in correct thread" />
+    <MESSAGE value="refactor: introduced local variable for message" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactor: introduced local variable for message" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/bot.py</url>
-          <line>46</line>
+          <line>67</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/bot_csi$Run.coverage" NAME="Run Coverage Results" MODIFIED="1696419159474" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/bot_csi$Run.coverage" NAME="Run Coverage Results" MODIFIED="1696427071226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/bot_csi$bot.coverage" NAME="bot Coverage Results" MODIFIED="1696334105909" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
