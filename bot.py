@@ -10,10 +10,6 @@ def load_api_key(path: str) -> str:
         return f.read().strip()
 
 
-async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(f'Hello {update.effective_user.first_name}')
-
-
 async def link_gruppi(update: Update, _):
     """
     Answers the user with the group required.
@@ -104,7 +100,6 @@ async def link_gruppi(update: Update, _):
 
 def main(api_key: str) -> None:
     bot: Application = ApplicationBuilder().token(api_key).build()
-    bot.add_handler(CommandHandler("hello", hello))
     bot.add_handler(CommandHandler(
         ["ot", "generale", "magistrale", "matricole", "anno1", "anno2", "anno3", "links"],
         link_gruppi)
