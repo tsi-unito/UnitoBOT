@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6b666a48-95d4-4e4c-9a9f-4d13f81156ab" name="Changes" comment="refactor: introduced local variable for message">
+    <list default="true" id="6b666a48-95d4-4e4c-9a9f-4d13f81156ab" name="Changes" comment="chore: cleanup">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
     </list>
@@ -65,7 +65,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1696332050952</updated>
-      <workItem from="1696332051980" duration="18869000" />
+      <workItem from="1696332051980" duration="20417000" />
     </task>
     <task id="LOCAL-00001" summary="feat: implemented links shortcuts">
       <option name="closed" value="true" />
@@ -139,7 +139,23 @@
       <option name="project" value="LOCAL" />
       <updated>1696420260483</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="fix: fixed text style not working well in markdown">
+      <option name="closed" value="true" />
+      <created>1696427396638</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1696427396638</updated>
+    </task>
+    <task id="LOCAL-00011" summary="chore: cleanup">
+      <option name="closed" value="true" />
+      <created>1696435821454</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1696435821454</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -150,25 +166,26 @@
     <MESSAGE value="fix: shadowing" />
     <MESSAGE value="chore: ide files" />
     <MESSAGE value="chore: added license" />
-    <MESSAGE value="chore: cleanup" />
     <MESSAGE value="feat: improved mentioning" />
     <MESSAGE value="fix: fixed bot not answering in correct thread" />
     <MESSAGE value="refactor: introduced local variable for message" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactor: introduced local variable for message" />
+    <MESSAGE value="fix: fixed text style not working well in markdown" />
+    <MESSAGE value="chore: cleanup" />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: cleanup" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/bot.py</url>
-          <line>67</line>
+          <line>81</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/bot_csi$Run.coverage" NAME="Run Coverage Results" MODIFIED="1696427071226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/bot_csi$Run.coverage" NAME="Run Coverage Results" MODIFIED="1696436472873" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/bot_csi$bot.coverage" NAME="bot Coverage Results" MODIFIED="1696334105909" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

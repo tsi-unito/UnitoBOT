@@ -10,6 +10,52 @@ def load_api_key(path: str) -> str:
         return f.read().strip()
 
 
+class ResourceData:
+    shortcut: list[str] | None
+    name: str
+    url: str | list[str]
+
+    def __init__(self, shortcut: list[str] | None, name: str, url: str | list[str]):
+        self.shortcut = shortcut
+        self.name = name
+        self.url = url
+
+
+def load_shortcuts() -> dict[str, ResourceData]:
+    _initialization_link_list = [
+        ResourceData(["ot"], "Gruppo Off-Topic", "https://t.me/+_zMDhpzM3q1iNjE0"),
+        ResourceData(["generale"], "Gruppo Generale", "https://t.me/joinchat/Ci07EELN-R3W2xI6-SGfGg"),
+        ResourceData(["magistrale"], "Gruppo della Magistrale", "https://t.me/joinchat/BbqyERQcACYhQFEO1iJD2g"),
+        ResourceData(["anno1", "matricole"], "Gruppo delle Matricole (Primo Anno)", "https://t.me/+Ox2fUmU2Un4xYTM0"),
+        ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
+        ResourceData(["anno3"], "Gruppo per gli Studenti del Terzo Anno",
+                     "https://t.me/joinchat/UmWgshpk8MXD_Y4KvLyU8A"),
+        ResourceData(["links"], "Lista dei link", "https://tsi-unito.eu/links"),
+        ResourceData(["lavoratori"], "Gruppo Studenti Lavoratori", "https://t.me/joinchat/QC1UEhvITLJNL33noRtszQ"),
+        ResourceData(["internazionali", "international"], "International Students Group",
+                     "https://t.me/international_students_CS_unito"),
+        ResourceData(["discord"], "Server Discord", "https://discord.gg/tRXKpxw6Uw"),
+        ResourceData(["minecraft", "mc"], "Server Minecraft", "https://t.me/+s_GzlN_kYpFhMTU0"),
+        ResourceData(["guida", "repo", "gh"], "Guida degli Studenti",
+                     "https://github.com/tsi-unito/guida_degli_studenti_di/")
+    ]
+
+    _links: dict[str, ResourceData] = {}
+
+    # Add every shortcut to the dictionary. If there are multiple shortcuts, add each of them as a new entry
+    for resource in _initialization_link_list:
+        for shortcut in resource.shortcut:
+            _links[shortcut] = resource
+
+    return _links
+
+
+# Global variable for now, to have direct access. Whenever the data needs to be updated, it can be set here.
+# THIS IS A RACE CONDITION waiting to happen, so we'll have to pass this to the handlers, or use some locking mechanism.
+# todo
+links: dict[str, ResourceData] = {}
+
+
 async def link_gruppi(update: Update, _):
     """
     Answers the user with the group required.
@@ -26,34 +72,6 @@ async def link_gruppi(update: Update, _):
         if key.type is MessageEntityType.BOT_COMMAND:
             command = entities.get(key).strip("/")
             break
-
-    class ResourceData:
-        shortcut: list[str] | None
-        name: str
-        url: str | list[str]
-
-        def __init__(self, shortcut: list[str] | None, name: str, url: str | list[str]):
-            self.shortcut = shortcut
-            self.name = name
-            self.url = url
-
-    links: dict[str, ResourceData] = {}
-
-    _initialization_link_list = [
-        ResourceData(["ot"], "Gruppo Off-Topic", "https://t.me/+_zMDhpzM3q1iNjE0"),
-        ResourceData(["generale"], "Gruppo Generale", "https://t.me/joinchat/Ci07EELN-R3W2xI6-SGfGg"),
-        ResourceData(["magistrale"], "Gruppo della Magistrale", "https://t.me/joinchat/BbqyERQcACYhQFEO1iJD2g"),
-        ResourceData(["anno1", "matricole"], "Gruppo delle Matricole (Primo Anno)", "https://t.me/+Ox2fUmU2Un4xYTM0"),
-        ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
-        ResourceData(["anno3"], "Gruppo per gli Studenti del Terzo Anno",
-                     "https://t.me/joinchat/UmWgshpk8MXD_Y4KvLyU8A"),
-        ResourceData(["links"], "Lista dei link", "https://tsi-unito.eu/links"),
-    ]
-
-    # Add every shortcut to the dictionary. If there are multiple shortcuts, add each of them as a new entry
-    for resource in _initialization_link_list:
-        for shortcut in resource.shortcut:
-            links[shortcut] = resource
 
     link = links.get(command)
     if link is None:
@@ -76,20 +94,22 @@ async def link_gruppi(update: Update, _):
         if is_replying:
             # The id of the message we should reply to, and NOT the invoker of the command
             original_message = reply_message.message_id
-            await message.reply_text(f"<b>Ecco il link che hai richiesto:</b>\n » <a href='{link.url}'>{link.name}</a>",
-                                     parse_mode=ParseMode.HTML,
-                                     reply_to_message_id=original_message)
+            await message.reply_text(
+                f"<b>Ecco il link che hai richiesto:</b>\n\n » <a href='{link.url}'>{link.name}</a>",
+                parse_mode=ParseMode.HTML,
+                reply_to_message_id=original_message)
         else:
             user_name = message.from_user.full_name
             user_id = message.from_user.id
             await message.reply_text(
-                f"<b>Ecco il link che hai richiesto</b> <a href='tg://user?id={user_id}'>{user_name}</a>:\n » <a href='{link.url}'>{link.name}</a>",
+                f"<b>Ecco il link che hai richiesto</b> <a href='tg://user?id={user_id}'>{user_name}</a>:\n\n"
+                f" » <a href='{link.url}'>{link.name}</a>",
                 quote=False,
                 message_thread_id=message_thread,
                 parse_mode=ParseMode.HTML
             )
     else:
-        await message.reply_text(f"<b>Ecco il link:</b>\n<a href='{link.url}'>{link.name}</a>",
+        await message.reply_text(f"<b>Ecco il link:</b>\n\n<a href='{link.url}'>{link.name}</a>",
                                  parse_mode=ParseMode.HTML)
 
     try:
@@ -100,10 +120,11 @@ async def link_gruppi(update: Update, _):
 
 def main(api_key: str) -> None:
     bot: Application = ApplicationBuilder().token(api_key).build()
-    bot.add_handler(CommandHandler(
-        ["ot", "generale", "magistrale", "matricole", "anno1", "anno2", "anno3", "links"],
-        link_gruppi)
-    )
+
+    global links
+    links = load_shortcuts()
+
+    bot.add_handler(CommandHandler(links.keys(), link_gruppi))
 
     bot.run_polling()
 
