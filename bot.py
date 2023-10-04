@@ -45,6 +45,7 @@ async def link_gruppi(update: Update, _):
     # Got the correct link. Now let's see how to behave...
 
     message_in_group = update.message.chat_id != update.message.from_user.id
+    message_thread = update.message.message_thread_id
 
     if message_in_group:
         reply_message = update.message.reply_to_message
@@ -66,6 +67,7 @@ async def link_gruppi(update: Update, _):
             user_id = update.message.from_user.id
             await update.message.reply_text(f"[Ecco qua il link]({link}) [{user_name}](tg://user?id={user_id})\\!",
                                             quote=False,
+                                            message_thread_id=message_thread,
                                             parse_mode=ParseMode.MARKDOWN_V2)
     else:
         await update.message.reply_text(f"[Ecco il link]({link})\\!", parse_mode=ParseMode.MARKDOWN_V2)
