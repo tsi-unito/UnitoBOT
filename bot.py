@@ -24,7 +24,7 @@ class ResourceData:
 def load_shortcuts() -> dict[str, ResourceData]:
     _initialization_link_list = [
         ResourceData(["ot"], "Gruppo Off-Topic", "https://t.me/+_zMDhpzM3q1iNjE0"),
-        ResourceData(["generale"], "Gruppo Generale", "https://t.me/joinchat/Ci07EELN-R3W2xI6-SGfGg"),
+        ResourceData(["generale", "triennale"], "Gruppo Generale", "https://t.me/joinchat/Ci07EELN-R3W2xI6-SGfGg"),
         ResourceData(["magistrale"], "Gruppo della Magistrale", "https://t.me/joinchat/BbqyERQcACYhQFEO1iJD2g"),
         ResourceData(["anno1", "matricole"], "Gruppo delle Matricole (Primo Anno)", "https://t.me/+Ox2fUmU2Un4xYTM0"),
         ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
@@ -118,15 +118,43 @@ async def link_gruppi(update: Update, _):
         print(f"Errore durante la cancellazione del messaggio {message.id}")
 
 
+async def command_help(update: Update, _):
+    message = update.message
+
+    user_name = message.from_user.full_name
+    user_id = message.from_user.id
+    message_thread = message.message_thread_id
+
+    keyboard = InlineKeyboardMarkup.from_button(
+        InlineKeyboardButton(text="Consulta la guida", url="tg://resolve?domain=CSI_di_unito_bot&start=help")
+    )
+
+    # In the future we might need to encode in Base64 the payload if we need to handle LOTS of requests
+    await message.reply_text(
+        f"<b>Ciao</b> <a href='tg://user?id={user_id}'>{user_name}</a>!:\nPuoi consultare la mia guida in privato",
+        quote=False,
+        message_thread_id=message_thread,
+        parse_mode=ParseMode.HTML,
+        reply_markup=keyboard
+    )
+
+
+async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.chat.type is ChatType.PRIVATE:
+        await update.message.reply_text("Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare "
+                                        "a dei risultati inattesi.")
+
+
 def main(api_key: str) -> None:
-    bot: Application = ApplicationBuilder().token(api_key).build()
+    application: Application = ApplicationBuilder().token(api_key).build()
 
     global links
     links = load_shortcuts()
 
-    bot.add_handler(CommandHandler(links.keys(), link_gruppi))
-
-    bot.run_polling()
+    application.add_handler(CommandHandler(links.keys(), link_gruppi))
+    application.add_handler(CommandHandler(["help", "aiuto"], command_help))
+    application.add_handler(CommandHandler(["start"], command_start))
+    application.run_polling()
 
 
 if __name__ == '__main__':
