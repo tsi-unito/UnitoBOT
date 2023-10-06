@@ -21,25 +21,26 @@ class ResourceData:
         self.url = url
 
 
-def load_shortcuts() -> dict[str, ResourceData]:
-    _initialization_link_list = [
-        ResourceData(["ot"], "Gruppo Off-Topic", "https://t.me/+_zMDhpzM3q1iNjE0"),
-        ResourceData(["generale", "triennale"], "Gruppo Generale", "https://t.me/joinchat/Ci07EELN-R3W2xI6-SGfGg"),
-        ResourceData(["magistrale"], "Gruppo della Magistrale", "https://t.me/joinchat/BbqyERQcACYhQFEO1iJD2g"),
-        ResourceData(["anno1", "matricole"], "Gruppo delle Matricole (Primo Anno)", "https://t.me/+Ox2fUmU2Un4xYTM0"),
-        ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
-        ResourceData(["anno3"], "Gruppo per gli Studenti del Terzo Anno",
-                     "https://t.me/joinchat/UmWgshpk8MXD_Y4KvLyU8A"),
-        ResourceData(["links"], "Lista dei link", "https://tsi-unito.eu/links"),
-        ResourceData(["lavoratori"], "Gruppo Studenti Lavoratori", "https://t.me/joinchat/QC1UEhvITLJNL33noRtszQ"),
-        ResourceData(["internazionali", "international"], "International Students Group",
-                     "https://t.me/international_students_CS_unito"),
-        ResourceData(["discord"], "Server Discord", "https://discord.gg/tRXKpxw6Uw"),
-        ResourceData(["minecraft", "mc"], "Server Minecraft", "https://t.me/+s_GzlN_kYpFhMTU0"),
-        ResourceData(["guida", "repo", "gh"], "Guida degli Studenti",
-                     "https://github.com/tsi-unito/guida_degli_studenti_di/")
-    ]
+_initialization_link_list = [
+    ResourceData(["ot"], "Gruppo Off-Topic", "https://t.me/+_zMDhpzM3q1iNjE0"),
+    ResourceData(["generale", "triennale"], "Gruppo Generale", "https://t.me/joinchat/Ci07EELN-R3W2xI6-SGfGg"),
+    ResourceData(["magistrale"], "Gruppo della Magistrale", "https://t.me/joinchat/BbqyERQcACYhQFEO1iJD2g"),
+    ResourceData(["anno1", "matricole"], "Gruppo delle Matricole (Primo Anno)", "https://t.me/+Ox2fUmU2Un4xYTM0"),
+    ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
+    ResourceData(["anno3"], "Gruppo per gli Studenti del Terzo Anno",
+                 "https://t.me/joinchat/UmWgshpk8MXD_Y4KvLyU8A"),
+    ResourceData(["links"], "Lista dei link", "https://tsi-unito.eu/links"),
+    ResourceData(["lavoratori"], "Gruppo Studenti Lavoratori", "https://t.me/joinchat/QC1UEhvITLJNL33noRtszQ"),
+    ResourceData(["internazionali", "international"], "International Students Group",
+                 "https://t.me/international_students_CS_unito"),
+    ResourceData(["discord"], "Server Discord", "https://discord.gg/tRXKpxw6Uw"),
+    ResourceData(["minecraft", "mc"], "Server Minecraft", "https://t.me/+s_GzlN_kYpFhMTU0"),
+    ResourceData(["guida", "repo", "gh"], "Guida degli Studenti",
+                 "https://github.com/tsi-unito/guida_degli_studenti_di/")
+]
 
+
+def load_shortcuts() -> dict[str, ResourceData]:
     _links: dict[str, ResourceData] = {}
 
     # Add every shortcut to the dictionary. If there are multiple shortcuts, add each of them as a new entry
@@ -131,7 +132,7 @@ async def command_help(update: Update, _):
 
     # In the future we might need to encode in Base64 the payload if we need to handle LOTS of requests
     await message.reply_text(
-        f"<b>Ciao</b> <a href='tg://user?id={user_id}'>{user_name}</a>!:\nPuoi consultare la mia guida in privato",
+        f"Ciao <a href='tg://user?id={user_id}'>{user_name}</a>, puoi consultare la mia guida in privato",
         quote=False,
         message_thread_id=message_thread,
         parse_mode=ParseMode.HTML,
@@ -141,8 +142,22 @@ async def command_help(update: Update, _):
 
 async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type is ChatType.PRIVATE:
-        await update.message.reply_text("Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare "
-                                        "a dei risultati inattesi.")
+        payload = context.args
+
+        if payload[0] == "help":
+            text = "<b>Scorciatoie per <u>gruppi usati di frequente</u>:</b>\n"
+            for link in _initialization_link_list:
+                if link.shortcut is None:
+                    continue
+
+                text += f"{', '.join(map(lambda s: f'/{s}', link.shortcut))}: {link.name}\n"
+
+            await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+        else:
+
+            await update.message.reply_text(
+                f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi.\n"
+                f"{payload}")
 
 
 def main(api_key: str) -> None:
