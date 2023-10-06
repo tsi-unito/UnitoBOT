@@ -102,8 +102,10 @@ async def link_gruppi(update: Update, _):
         else:
             user_name = message.from_user.full_name
             user_id = message.from_user.id
+            user_mention = telegram.helpers.mention_html(user_id, user_name)
+
             await message.reply_text(
-                f"<b>Ecco il link che hai richiesto</b> <a href='tg://user?id={user_id}'>{user_name}</a>:\n\n"
+                f"<b>Ecco il link che hai richiesto</b> {user_mention}:\n\n"
                 f" » <a href='{link.url}'>{link.name}</a>",
                 quote=False,
                 message_thread_id=message_thread,
@@ -122,8 +124,14 @@ async def link_gruppi(update: Update, _):
 async def command_help(update: Update, _):
     message = update.message
 
+    # help in private chat: send the message directly
+    if message.chat.type is ChatType.PRIVATE:
+        return await send_help_message(update)
+
+    # We're in a group: reply with a deep link to the private chat with the bot.
     user_name = message.from_user.full_name
     user_id = message.from_user.id
+    user_mention = telegram.helpers.mention_html(user_id, user_name)
     message_thread = message.message_thread_id
 
     keyboard = InlineKeyboardMarkup.from_button(
@@ -132,7 +140,7 @@ async def command_help(update: Update, _):
 
     # In the future we might need to encode in Base64 the payload if we need to handle LOTS of requests
     await message.reply_text(
-        f"Ciao <a href='tg://user?id={user_id}'>{user_name}</a>, puoi consultare la mia guida in privato",
+        f"Ciao {user_mention}, puoi consultare la mia guida in privato",
         quote=False,
         message_thread_id=message_thread,
         parse_mode=ParseMode.HTML,
@@ -145,19 +153,27 @@ async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payload = context.args
 
         if payload[0] == "help":
-            text = "<b>Scorciatoie per <u>gruppi usati di frequente</u>:</b>\n"
-            for link in _initialization_link_list:
-                if link.shortcut is None:
-                    continue
-
-                text += f"{', '.join(map(lambda s: f'/{s}', link.shortcut))}: {link.name}\n"
-
-            await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+            await send_help_message(update)
         else:
 
             await update.message.reply_text(
                 f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi.\n"
                 f"{payload}")
+
+
+async def send_help_message(update: Update):
+    text = "<u>Scorciatoie per gruppi usati di frequente:</u>\n\n"
+    for link in _initialization_link_list:
+        if link.shortcut is None:
+            continue
+
+        _TEMPLATE = "- <b>{group_name}</b>: {group_shortcuts}\n"
+
+        available_shortcuts = ', '.join(map(lambda s: f'/{s}', link.shortcut))
+
+        text += _TEMPLATE.format(group_name=link.name, group_shortcuts=available_shortcuts)
+
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 def main(api_key: str) -> None:
@@ -169,6 +185,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(links.keys(), link_gruppi))
     application.add_handler(CommandHandler(["help", "aiuto"], command_help))
     application.add_handler(CommandHandler(["start"], command_start))
+
     application.run_polling()
 
 
