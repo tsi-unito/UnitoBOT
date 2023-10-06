@@ -83,7 +83,7 @@ async def link_gruppi(update: Update, _):
     message_in_group = message.chat_id != message.from_user.id
     message_thread = message.message_thread_id
 
-    if message_in_group:
+    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
         reply_message = message.reply_to_message
         # This is a temporary fix because the library tells us that the user has replied with the command to another
         # user, while in reality they did not. Right now we check if the reply is towards a message/sticker/audio
@@ -112,8 +112,7 @@ async def link_gruppi(update: Update, _):
                 parse_mode=ParseMode.HTML
             )
     else:
-        await message.reply_text(f"<b>Ecco il link:</b>\n\n<a href='{link.url}'>{link.name}</a>",
-                                 parse_mode=ParseMode.HTML)
+        await message.reply_text(f"<a href='{link.url}'>{link.name}</a>", parse_mode=ParseMode.HTML)
 
     try:
         await message.delete()
