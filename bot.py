@@ -114,9 +114,14 @@ async def link_gruppi(update: Update, _):
     else:
         await message.reply_text(f"<a href='{link.url}'>{link.name}</a>", parse_mode=ParseMode.HTML)
 
+    await delete_message(message)
+
+
+async def delete_message(message):
     try:
         await message.delete()
     except telegram.error.BadRequest:
+        # todo handle error by sending message also to log chat (see issue #8)
         print(f"Errore durante la cancellazione del messaggio {message.id}")
 
 
@@ -151,28 +156,72 @@ async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type is ChatType.PRIVATE:
         payload = context.args
 
-        if payload[0] == "help":
-            await send_help_message(update)
-        else:
-
+        if len(payload) <= 0:
             await update.message.reply_text(
-                f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi.\n"
-                f"{payload}")
+                f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi"
+            )
+            return
+
+        match payload[0]:
+            case "help":
+                await send_help_message(update)
+            case "rapp":
+                await send_rappresentanti_message(update)
+            case _:
+                await update.message.reply_html(
+                    f"Ciao! Attualmente la funzionalità che hai richiesto non è disponibile.\n"
+                    f"Se credi che questo sia un errore, inoltra questo messaggio a @Stefa168.\n\n"
+                    f"payload: {payload}")
+
+
+async def command_rappresentanti(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if message.chat.type is ChatType.PRIVATE:
+        await send_rappresentanti_message(update)
+
+    else:
+        keyboard = InlineKeyboardMarkup.from_column(
+            [
+                InlineKeyboardButton(text="Contatti Telegram", url="tg://resolve?domain=CSI_di_unito_bot&start=rapp"),
+                InlineKeyboardButton(text="Contatta un rappresentante",
+                                     url="tg://resolve?domain=CSI_di_unito_bot&start=rapp_contact")
+            ]
+        )
+
+        message_thread = message.message_thread_id
+        await message.reply_html("Puoi consultare la lista dei Rappresentanti degli Studenti "
+                                 "<a href='https://laurea.informatica.unito.it/do/organi.pl/Show?_id=1urw'>qui</a>.\n\n"
+                                 "Se hai bisogno di altro, usa i pulsanti qua sotto. (WIP)",
+                                 quote=False,
+                                 message_thread_id=message_thread,
+                                 disable_web_page_preview=True,
+                                 reply_markup=keyboard)
+
+    await delete_message(message)
 
 
 async def send_help_message(update: Update):
     text = "<u>Scorciatoie per gruppi usati di frequente:</u>\n\n"
+    _TEMPLATE = "- <b>{group_name}</b>: {group_shortcuts}\n"
+
     for link in _initialization_link_list:
         if link.shortcut is None:
             continue
-
-        _TEMPLATE = "- <b>{group_name}</b>: {group_shortcuts}\n"
 
         available_shortcuts = ', '.join(map(lambda s: f'/{s}', link.shortcut))
 
         text += _TEMPLATE.format(group_name=link.name, group_shortcuts=available_shortcuts)
 
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def send_rappresentanti_message(update: Update):
+    # todo get all the representatives from the Database!
+    #  maybe also use the online website.
+    await update.message.reply_text("Trovi la lista completa dei rappresentanti "
+                                    "<a href='https://laurea.informatica.unito.it/do/organi.pl/Show?_id=1urw'>qui</a>."
+                                    "\nPresto aggiungeremo anche i contatti Telegram dei rappresentanti!",
+                                    parse_mode=ParseMode.HTML)
 
 
 def main(api_key: str) -> None:
@@ -184,6 +233,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(links.keys(), link_gruppi))
     application.add_handler(CommandHandler(["help", "aiuto"], command_help))
     application.add_handler(CommandHandler(["start"], command_start))
+    application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
 
     application.run_polling()
 
