@@ -153,25 +153,27 @@ async def command_help(update: Update, _):
 
 
 async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type is ChatType.PRIVATE:
+    message = update.message
+    if message.chat.type is ChatType.PRIVATE:
         payload = context.args
 
         if len(payload) <= 0:
-            await update.message.reply_text(
+            await message.reply_text(
                 f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi"
             )
-            return
+        else:
+            match payload[0]:
+                case "help":
+                    await send_help_message(update)
+                case "rapp":
+                    await send_rappresentanti_message(update)
+                case _:
+                    await message.reply_html(
+                        f"Ciao! Attualmente la funzionalità che hai richiesto non è disponibile.\n"
+                        f"Se credi che questo sia un errore, inoltra questo messaggio a @Stefa168.\n\n"
+                        f"payload: {payload}")
 
-        match payload[0]:
-            case "help":
-                await send_help_message(update)
-            case "rapp":
-                await send_rappresentanti_message(update)
-            case _:
-                await update.message.reply_html(
-                    f"Ciao! Attualmente la funzionalità che hai richiesto non è disponibile.\n"
-                    f"Se credi che questo sia un errore, inoltra questo messaggio a @Stefa168.\n\n"
-                    f"payload: {payload}")
+    await delete_message(message)
 
 
 async def command_rappresentanti(update: Update, context: ContextTypes.DEFAULT_TYPE):
