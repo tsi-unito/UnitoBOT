@@ -7,3 +7,14 @@ services:
       - ./api_key:/usr/src/app/api_key
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+  postgres:
+    image: postgres:alpine
+    restart: unless-stopped
+    volumes:
+      - ./database:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=bot
+      - POSTGRES_PASSWORD=bot
+      - POSTGRES_DB=bot
+    ports:
+      - "5432:5432"
