@@ -8,6 +8,7 @@
 11_LDTObot_permessiadmin.py
 1_LDTObot_primipassi.py
 api_key
+database/
 
 # User-specific stuff
 .idea/**/workspace.xml
