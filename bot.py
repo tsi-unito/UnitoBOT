@@ -1,8 +1,12 @@
+import json
+
 import telegram.error
 from telegram import *
 
 from telegram.ext import *
 from telegram.constants import *
+
+from emoji import emojize
 
 
 def load_api_key(path: str) -> str:
@@ -139,7 +143,8 @@ async def command_help(update: Update, _):
     message_thread = message.message_thread_id
 
     keyboard = InlineKeyboardMarkup.from_button(
-        InlineKeyboardButton(text="Consulta la guida", url="tg://resolve?domain=CSI_di_unito_bot&start=help")
+        InlineKeyboardButton(text=emojize(":sauropod: Consulta la guida"),
+                             url="tg://resolve?domain=CSI_di_unito_bot&start=help")
     )
 
     # In the future we might need to encode in Base64 the payload if we need to handle LOTS of requests
@@ -150,6 +155,8 @@ async def command_help(update: Update, _):
         parse_mode=ParseMode.HTML,
         reply_markup=keyboard
     )
+
+    await delete_message(message)
 
 
 async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -226,6 +233,84 @@ async def send_rappresentanti_message(update: Update):
                                     parse_mode=ParseMode.HTML)
 
 
+def user_has_role(user: User, accepted_roles: list[str]) -> bool:
+    # todo use database
+    return True
+
+
+# noinspection DuplicatedCode
+async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # master role is for who manages the bot.
+    message = update.message
+    if not user_has_role(message.from_user, ["master"]):
+        await delete_message(message)
+        return
+
+    admins: list[ChatMemberAdministrator] = list(await context.bot.get_chat_administrators(message.chat_id))
+
+    me: User = await context.bot.getMe()
+    me_admin: ChatMemberAdministrator | None = None
+
+    for admin in admins:
+        if me.id == admin.user.id:
+            me_admin = admin
+            break
+
+    def check(b: bool) -> str:
+        return ":white_check_mark:" if b else ":x:"
+
+    checks = True
+
+    text = "<b>Controlli pre-flight:</b>\n\n"
+
+    text += f" - NOT Anonymous: {check(not me_admin.is_anonymous)}\n"
+    checks = checks and not me_admin.is_anonymous
+
+    text += f" - CAN Manage chat: {check(me_admin.can_manage_chat)}\n"
+    checks = checks and me_admin.can_manage_chat
+
+    text += f" - CAN Delete messages: {check(me_admin.can_delete_messages)}\n"
+    checks = checks and me_admin.can_delete_messages
+
+    text += f" - CAN Manage video chats: {check(me_admin.can_manage_video_chats)}\n"
+    checks = checks and me_admin.can_manage_video_chats
+
+    text += f" - CAN Restrict members: {check(me_admin.can_restrict_members)}\n"
+    checks = checks and me_admin.can_restrict_members
+
+    text += f" - CAN Promote members: {check(me_admin.can_promote_members)}\n"
+    checks = checks and me_admin.can_promote_members
+
+    text += f" - CAN Change info: {check(me_admin.can_change_info)}\n"
+    checks = checks and me_admin.can_change_info
+
+    text += f" - CAN Invite users: {check(me_admin.can_invite_users)}\n"
+    checks = checks and me_admin.can_invite_users
+
+    text += f" - CAN Pin Messages: {check(me_admin.can_pin_messages)}\n"
+    checks = checks and me_admin.can_pin_messages
+
+    text += f" - CAN Manage Topics: {check(me_admin.can_manage_topics)}\n"
+    checks = checks and me_admin.can_manage_topics
+
+    text += "\n"
+
+    if not checks:
+        text += (":warning: Non tutti i controlli sono stati superati. Controllare i permessi e lanciare "
+                 "nuovamente il comando /activate.")
+
+        return await message.reply_html(text=emojize(text, language="alias"),
+                                        quote=False,
+                                        message_thread_id=message.message_thread_id)
+
+    # todo register the group in the DB since all checks pass.
+
+    await message.reply_text("Ha funzionato! Ma cosa...?", quote=False)
+
+    # print(admins)
+    # await message.reply_text(admins)
+
+
 def main(api_key: str) -> None:
     application: Application = ApplicationBuilder().token(api_key).build()
 
@@ -236,6 +321,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["help", "aiuto"], command_help))
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
+    application.add_handler(CommandHandler(["activate"], command_activate))
 
     application.run_polling()
 
