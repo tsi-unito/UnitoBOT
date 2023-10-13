@@ -243,7 +243,8 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # master role is for who manages the bot.
     message = update.message
     if not user_has_role(message.from_user, ["master"]):
-        await delete_message(message)
+        # This doesn't make any sense: we cannot delete somebody else's message if we're not admins.
+        # await delete_message(message)
         return
 
     admins: list[ChatMemberAdministrator] = list(await context.bot.get_chat_administrators(message.chat_id))
