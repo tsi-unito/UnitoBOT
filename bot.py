@@ -239,8 +239,10 @@ def user_has_role(user: User, accepted_roles: list[str]) -> bool:
 
 
 async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_html("Puoi trovare gli appunti degli studenti <a "
-                                    "href='https://github.com/tsi-unito/guida_degli_studenti_di>qui</a>.",
+    await update.message.reply_html(f"Ciao {update.message.from_user.full_name}, puoi trovare molti appunti gratuiti "
+                                    f"sulla <b>Guida degli Studenti</b>\n\n"
+                                    f" » <a href='https://github.com/tsi-unito/guida_degli_studenti_di/tree/master"
+                                    f"/Materie'>Appunti</a>",
                                     quote=True,
                                     message_thread_id=update.message.message_thread_id)
 
