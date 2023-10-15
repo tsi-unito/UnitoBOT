@@ -2,13 +2,21 @@ version: '3.9'
 services:
   bot:
     image: ghcr.io/tsi-unito/UnitoBOT
+    container_name: UnitoBOT
     restart: unless-stopped
     volumes:
-      - ./api_key:/usr/src/app/api_key
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+    environment:
+      - API_KEY_FILE=/run/secrets/api_key_file
+    depends_on:
+      - postgres
+    secrets:
+      - api_key_file
+
   postgres:
     image: postgres:alpine
+    container_name: postgres
     restart: unless-stopped
     volumes:
       - ./database:/var/lib/postgresql/data
@@ -16,5 +24,12 @@ services:
       - POSTGRES_USER=bot
       - POSTGRES_PASSWORD=bot
       - POSTGRES_DB=bot
+      - API_KEY_FILE=api_key_file
     ports:
       - "5432:5432"
+    secrets:
+      - api_key_file
+
+secrets:
+    api_key_file:
+        file: ./api_key
