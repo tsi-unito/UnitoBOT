@@ -1,5 +1,6 @@
 import logging
 import urllib.parse
+import os
 
 import sqlalchemy
 import telegram.error
@@ -354,7 +355,7 @@ def main(api_key: str) -> None:
 
 
 if __name__ == '__main__':
-    _api_key_path: str = "./api_key"
+    _api_key_path: str = os.getenv('API_KEY_FILE') if os.getenv('API_KEY_FILE') is not None else "./api_key"
     _key = load_api_key(_api_key_path)
 
     # todo improve (singleton? anyway, something to avoid having a global)
