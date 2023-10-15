@@ -238,6 +238,13 @@ def user_has_role(user: User, accepted_roles: list[str]) -> bool:
     return True
 
 
+async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_html("Puoi trovare gli appunti degli studenti <a "
+                                    "href='https://github.com/tsi-unito/guida_degli_studenti_di>qui</a>.",
+                                    quote=True,
+                                    message_thread_id=update.message.message_thread_id)
+
+
 # noinspection DuplicatedCode
 async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # master role is for who manages the bot.
@@ -306,8 +313,6 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # todo register the group in the DB since all checks pass.
 
-
-
     await message.reply_html(emojize("Successo! :rocket:\n"
                                      "Il gruppo è stato aggiunto al sistema.",
                                      language="alias"),
@@ -326,6 +331,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
+    application.add_handler(MessageHandler(filters.Regex("appunti"),reply_repo_appunti))  #todo: regex
 
     application.run_polling()
 
