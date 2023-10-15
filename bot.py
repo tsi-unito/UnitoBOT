@@ -1,17 +1,29 @@
 import logging
+import urllib.parse
+import os
 
+import sqlalchemy
 import telegram.error
-from telegram import *
-
-from telegram.ext import *
-from telegram.constants import *
 
 from emoji import emojize
+from sqlalchemy import create_engine
+from sqlalchemy.exc import DatabaseError
+from sqlalchemy.orm import Session
+from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
+    ChatMemberAdministrator
+from telegram.constants import MessageEntityType, ParseMode, ChatType
+from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler
+
+from data.botchat import BotChat
+from data.botuser import BotUser
 
 
 def load_api_key(path: str) -> str:
     with open(path, 'r') as f:
         return f.read().strip()
+
+
+BOT_ROLE_MASTER = "master"
 
 
 class ResourceData:
@@ -233,9 +245,11 @@ async def send_rappresentanti_message(update: Update):
                                     parse_mode=ParseMode.HTML)
 
 
-def user_has_role(user: User, accepted_roles: list[str]) -> bool:
-    # todo use database
-    return True
+def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session) -> bool:
+    roles = session.query(BotUser.role).filter_by(telegram_user_id=user.id).all()
+    roles = set(map(lambda t: t[0], roles))
+
+    return len(roles.intersection(accepted_roles)) > 0
 
 
 async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -249,77 +263,89 @@ async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # noinspection DuplicatedCode
 async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # master role is for who manages the bot.
     message = update.message
-    if not user_has_role(message.from_user, ["master"]):
-        # This doesn't make any sense: we cannot delete somebody else's message if we're not admins.
-        # await delete_message(message)
-        return
 
-    admins: list[ChatMemberAdministrator] = list(await context.bot.get_chat_administrators(message.chat_id))
+    # https://docs.sqlalchemy.org/en/20/tutorial/orm_data_manipulation.html#closing-a-session
+    with Session(engine) as session:
+        # master role is for who manages the bot.
+        if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
+            # We might already be administrators in the group, try to delete it
+            await delete_message(message)
+            return
 
-    me: User = await context.bot.getMe()
-    me_admin: ChatMemberAdministrator | None = None
+        db_entry = session.query(BotChat.telegram_chat_id).filter_by(telegram_chat_id=message.chat.id).first()
 
-    for admin in admins:
-        if me.id == admin.user.id:
-            me_admin = admin
-            break
+        if db_entry is not None:
+            user_name = message.from_user.full_name
+            user_id = message.from_user.id
+            user_mention = telegram.helpers.mention_html(user_id, user_name)
 
-    def check(b: bool) -> str:
-        return ":white_check_mark:" if b else ":x:"
+            await message.reply_html(
+                emojize(f":warning: Il gruppo è già registrato {user_mention}!", language="alias"),
+                quote=False,
+                message_thread_id=message.message_thread_id)
+            await delete_message(message)
+            session.close()
+            return
 
-    checks = True
+        admins: list[ChatMemberAdministrator] = list(await context.bot.get_chat_administrators(message.chat_id))
 
-    text = "<b>Controlli pre-flight:</b>\n\n"
+        me: TelegramUser = await context.bot.getMe()
+        me_admin: ChatMemberAdministrator | None = None
 
-    text += f" • NOT Anonymous: {check(not me_admin.is_anonymous)}\n"
-    checks = checks and not me_admin.is_anonymous
+        for admin in admins:
+            if me.id == admin.user.id:
+                me_admin = admin
+                break
 
-    text += f" • CAN Manage chat: {check(me_admin.can_manage_chat)}\n"
-    checks = checks and me_admin.can_manage_chat
+        def check(check_name: str, b: bool, prev: tuple[str, bool] = ("", True)):
+            line = f" • {check_name}: " + (":white_check_mark:" if b else ":x:") + "\n"
 
-    text += f" • CAN Delete messages: {check(me_admin.can_delete_messages)}\n"
-    checks = checks and me_admin.can_delete_messages
+            return prev[0] + line, prev[1] and b
 
-    text += f" • CAN Manage video chats: {check(me_admin.can_manage_video_chats)}\n"
-    checks = checks and me_admin.can_manage_video_chats
+        checks = ("<b>Controlli pre-flight:</b>\n\n", True)
+        checks = check("NOT Anonymous", not me_admin.is_anonymous, checks)
+        checks = check("CAN Manage chat", me_admin.can_manage_chat, checks)
+        checks = check("CAN Delete messages", me_admin.can_delete_messages, checks)
+        checks = check("CAN Manage video chats", me_admin.can_manage_video_chats, checks)
+        checks = check("CAN Restrict members", me_admin.can_restrict_members, checks)
+        checks = check("CAN Promote members", me_admin.can_promote_members, checks)
+        checks = check("CAN Change info", me_admin.can_change_info, checks)
+        checks = check("CAN Invite users", me_admin.can_invite_users, checks)
+        checks = check("CAN Pin Messages", me_admin.can_pin_messages, checks)
+        checks = check("CAN Manage Topics", me_admin.can_manage_topics, checks)
 
-    text += f" • CAN Restrict members: {check(me_admin.can_restrict_members)}\n"
-    checks = checks and me_admin.can_restrict_members
+        checks = (checks[0] + "\n", checks[1])
 
-    text += f" • CAN Promote members: {check(me_admin.can_promote_members)}\n"
-    checks = checks and me_admin.can_promote_members
+        if not checks[1]:
+            _t = (":warning: Non tutti i controlli sono stati superati. Controllare i permessi e lanciare "
+                  "nuovamente il comando /activate.")
 
-    text += f" • CAN Change info: {check(me_admin.can_change_info)}\n"
-    checks = checks and me_admin.can_change_info
+            checks = (checks[0] + _t, checks[1])
 
-    text += f" • CAN Invite users: {check(me_admin.can_invite_users)}\n"
-    checks = checks and me_admin.can_invite_users
+            return await message.reply_html(text=emojize(checks[0], language="alias"),
+                                            quote=False,
+                                            message_thread_id=message.message_thread_id)
 
-    text += f" • CAN Pin Messages: {check(me_admin.can_pin_messages)}\n"
-    checks = checks and me_admin.can_pin_messages
+        new_chat = BotChat(telegram_chat_id=message.chat_id)
+        session.add(new_chat)
 
-    text += f" • CAN Manage Topics: {check(me_admin.can_manage_topics)}\n"
-    checks = checks and me_admin.can_manage_topics
+        try:
+            session.commit()
 
-    text += "\n"
-
-    if not checks:
-        text += (":warning: Non tutti i controlli sono stati superati. Controllare i permessi e lanciare "
-                 "nuovamente il comando /activate.")
-
-        return await message.reply_html(text=emojize(text, language="alias"),
-                                        quote=False,
-                                        message_thread_id=message.message_thread_id)
-
-    # todo register the group in the DB since all checks pass.
-
-    await message.reply_html(emojize("Successo! :rocket:\n"
-                                     "Il gruppo è stato aggiunto al sistema.",
-                                     language="alias"),
-                             quote=False,
-                             message_thread_id=message.message_thread_id)
+            await message.reply_html(emojize("Successo! :rocket:\n"
+                                             "Il gruppo è stato aggiunto al sistema.",
+                                             language="alias"),
+                                     quote=False,
+                                     message_thread_id=message.message_thread_id)
+        except DatabaseError as e:
+            await message.reply_html(emojize(f"Si è verificato un errore :sob:\n"
+                                             f"Ecco alcuni dettagli:\n\n"
+                                             f"<code>{str(e.orig).splitlines()[0]}</code>",
+                                             language="alias"))
+            # todo use logger
+            print(e)
+            session.rollback()
 
 
 def main(api_key: str) -> None:
@@ -339,8 +365,20 @@ def main(api_key: str) -> None:
 
 
 if __name__ == '__main__':
-    _api_key_path: str = "./api_key"
+    _api_key_path: str = os.getenv('API_KEY_FILE') if os.getenv('API_KEY_FILE') is not None else "./api_key"
     _key = load_api_key(_api_key_path)
+
+    # todo improve (singleton? anyway, something to avoid having a global)
+    global engine
+    # https://docs.sqlalchemy.org/en/20/core/engines.html#creating-urls-programmatically
+    engine = create_engine(sqlalchemy.URL.create(
+        "postgresql",
+        username="bot",
+        # Adding the parsing already in preparation for the settings file.
+        password=urllib.parse.quote_plus("bot"),
+        host="localhost",
+        database="bot"
+    ))
 
     logging.basicConfig()
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
