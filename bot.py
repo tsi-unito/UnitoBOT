@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import telegram.error
@@ -101,6 +102,7 @@ async def link_gruppi(update: Update, _):
             original_message = reply_message.message_id
             await message.reply_text(
                 f"<b>Ecco il link che hai richiesto:</b>\n\n » <a href='{link.url}'>{link.name}</a>",
+                quote=True,
                 parse_mode=ParseMode.HTML,
                 reply_to_message_id=original_message)
         else:
@@ -312,6 +314,102 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # await message.reply_text(admins)
 
 
+async def moderator_function(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    message_thread = message.message_thread_id
+    chat = message.chat
+
+    if not user_has_role(update.message.from_user, ["master"]):
+        await message.reply_text("Ci hai provato...",
+                                 quote=False,
+                                 message_thread_id=message_thread,
+                                 parse_mode=ParseMode.HTML)
+        return
+
+    # Check which command is launched
+    entities: dict[MessageEntity, str] = update.message.parse_entities([MessageEntityType.BOT_COMMAND])
+
+    command: str = entities.popitem()[1].strip("/")
+
+    if (context.args is None or len(context.args) <= 0) and message.reply_to_message is None:
+        await message.reply_text("Devi rispondere al messaggio di un utente o fornire il suo username/id")
+        return
+
+    if chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        reply_message = message.reply_to_message
+        # This is a temporary fix because the library tells us that the user has replied with the command to another
+        # user, while in reality they did not. Right now we check if the reply is towards a message/sticker/audio
+        is_replying = reply_message is not None and (
+                reply_message.text is not None or
+                reply_message.sticker is not None or
+                reply_message.audio is not None)
+
+        if is_replying:
+            # We must use the message thread id of the message replied
+            message_thread = message.reply_to_message.message_thread_id
+
+            # Get user id to kick from the reply message
+            user_name = message.reply_to_message.from_user.full_name
+            user_id = message.reply_to_message.from_user.id
+            user_mention = telegram.helpers.mention_html(user_id, user_name)
+
+            # Kick user by banning him for 1 second, kick method deprecated
+
+            # todo behave on the basis of the command
+            one_sec_interval = datetime.datetime.now() + datetime.timedelta(seconds=30)
+            await chat.ban_member(user_id=user_id, until_date=one_sec_interval)
+            await chat.unban_member(user_id=user_id)
+
+            # Delete message sent by the kicked user
+            await delete_message(reply_message)
+
+            await message.reply_text(
+                f"<b>{user_mention}</b> è stato kickato",
+                quote=False,
+                message_thread_id=message_thread,
+                parse_mode=ParseMode.HTML)
+        else:
+            entities: list[MessageEntity] = list(message.parse_entities([MessageEntityType.TEXT_MENTION, MessageEntityType.MENTION]))
+
+            # Check if the message contains MENTION entities
+            contains_mention_entities = any(map(lambda e: e.type == MessageEntityType.MENTION, entities))
+
+            # If the message contains MENTION entities, we need to ensure that the user is in the DB
+            if contains_mention_entities:
+                # todo check if the user is in the DB
+                await message.reply_text(
+                    f"<b>Errore: </b> utente non trovato, rispondi ad un suo messaggio per esequire l'azione",
+                    quote=False,
+                    message_thread_id=message_thread,
+                    parse_mode=ParseMode.HTML)
+                return
+
+            user_id = entities[0].user.id
+            user_name = entities[0].user.full_name
+            user_mention = telegram.helpers.mention_html(user_id, user_name)
+
+            await message.reply_text(
+                f"<b>{user_mention}</b> è stato kickato",
+                quote=False,
+                message_thread_id=message_thread,
+                parse_mode=ParseMode.HTML)
+
+            # Kick user by banning him for 1 second, kick method deprecated
+            # todo behave on the basis of the command
+            one_sec_interval = datetime.datetime.now() + datetime.timedelta(seconds=30)
+            await chat.ban_member(user_id=user_id, until_date=one_sec_interval)
+            await chat.unban_member(user_id=user_id)
+
+    else:
+        await message.reply_text(
+            f"<b>Comando non disponibile in chat private</b>",
+            quote=False,
+            message_thread_id=message_thread,
+            parse_mode=ParseMode.HTML)
+
+    await delete_message(message)
+
+
 def main(api_key: str) -> None:
     application: Application = ApplicationBuilder().token(api_key).build()
 
@@ -323,6 +421,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
+    application.add_handler(CommandHandler(["kick"], moderator_function))
 
     application.run_polling()
 
