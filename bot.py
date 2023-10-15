@@ -252,6 +252,15 @@ def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session
     return len(roles.intersection(accepted_roles)) > 0
 
 
+async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_html(f"Ciao {update.message.from_user.full_name}, puoi trovare molti appunti gratuiti "
+                                    f"sulla <b>Guida degli Studenti</b>\n\n"
+                                    f" » <a href='https://github.com/tsi-unito/guida_degli_studenti_di/tree/master"
+                                    f"/Materie'>Appunti</a>",
+                                    quote=True,
+                                    message_thread_id=update.message.message_thread_id)
+
+
 # noinspection DuplicatedCode
 async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
@@ -350,6 +359,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
+    application.add_handler(MessageHandler(filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),reply_repo_appunti))  #may be too generic
 
     application.run_polling()
 
