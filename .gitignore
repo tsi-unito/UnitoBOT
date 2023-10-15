@@ -9,6 +9,8 @@
 1_LDTObot_primipassi.py
 api_key
 database/
+#.idea/git_toolbox_prj.xml
+#.idea/dataSources.xml
 
 # User-specific stuff
 .idea/**/workspace.xml
@@ -43,10 +45,10 @@ database/
 # .idea/artifacts
 # .idea/compiler.xml
 # .idea/jarRepositories.xml
-# .idea/modules.xml
+#.idea/modules.xml
 # .idea/*.iml
 # .idea/modules
-# *.iml
+#*.iml
 # *.ipr
 
 # CMake
@@ -90,7 +92,7 @@ fabric.properties
 
 # *.iml
 # modules.xml
-# .idea/misc.xml
+#.idea/misc.xml
 # *.ipr
 
 # Sonarlint plugin
