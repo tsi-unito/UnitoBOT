@@ -1,4 +1,4 @@
-import json
+import logging
 
 import telegram.error
 from telegram import *
@@ -264,34 +264,34 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = "<b>Controlli pre-flight:</b>\n\n"
 
-    text += f" - NOT Anonymous: {check(not me_admin.is_anonymous)}\n"
+    text += f" • NOT Anonymous: {check(not me_admin.is_anonymous)}\n"
     checks = checks and not me_admin.is_anonymous
 
-    text += f" - CAN Manage chat: {check(me_admin.can_manage_chat)}\n"
+    text += f" • CAN Manage chat: {check(me_admin.can_manage_chat)}\n"
     checks = checks and me_admin.can_manage_chat
 
-    text += f" - CAN Delete messages: {check(me_admin.can_delete_messages)}\n"
+    text += f" • CAN Delete messages: {check(me_admin.can_delete_messages)}\n"
     checks = checks and me_admin.can_delete_messages
 
-    text += f" - CAN Manage video chats: {check(me_admin.can_manage_video_chats)}\n"
+    text += f" • CAN Manage video chats: {check(me_admin.can_manage_video_chats)}\n"
     checks = checks and me_admin.can_manage_video_chats
 
-    text += f" - CAN Restrict members: {check(me_admin.can_restrict_members)}\n"
+    text += f" • CAN Restrict members: {check(me_admin.can_restrict_members)}\n"
     checks = checks and me_admin.can_restrict_members
 
-    text += f" - CAN Promote members: {check(me_admin.can_promote_members)}\n"
+    text += f" • CAN Promote members: {check(me_admin.can_promote_members)}\n"
     checks = checks and me_admin.can_promote_members
 
-    text += f" - CAN Change info: {check(me_admin.can_change_info)}\n"
+    text += f" • CAN Change info: {check(me_admin.can_change_info)}\n"
     checks = checks and me_admin.can_change_info
 
-    text += f" - CAN Invite users: {check(me_admin.can_invite_users)}\n"
+    text += f" • CAN Invite users: {check(me_admin.can_invite_users)}\n"
     checks = checks and me_admin.can_invite_users
 
-    text += f" - CAN Pin Messages: {check(me_admin.can_pin_messages)}\n"
+    text += f" • CAN Pin Messages: {check(me_admin.can_pin_messages)}\n"
     checks = checks and me_admin.can_pin_messages
 
-    text += f" - CAN Manage Topics: {check(me_admin.can_manage_topics)}\n"
+    text += f" • CAN Manage Topics: {check(me_admin.can_manage_topics)}\n"
     checks = checks and me_admin.can_manage_topics
 
     text += "\n"
@@ -306,10 +306,13 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # todo register the group in the DB since all checks pass.
 
-    await message.reply_text("Ha funzionato! Ma cosa...?", quote=False)
 
-    # print(admins)
-    # await message.reply_text(admins)
+
+    await message.reply_html(emojize("Successo! :rocket:\n"
+                                     "Il gruppo è stato aggiunto al sistema.",
+                                     language="alias"),
+                             quote=False,
+                             message_thread_id=message.message_thread_id)
 
 
 def main(api_key: str) -> None:
@@ -330,4 +333,8 @@ def main(api_key: str) -> None:
 if __name__ == '__main__':
     _api_key_path: str = "./api_key"
     _key = load_api_key(_api_key_path)
+
+    logging.basicConfig()
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
     main(_key)
