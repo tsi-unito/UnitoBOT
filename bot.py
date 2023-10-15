@@ -333,7 +333,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
-    application.add_handler(MessageHandler(filters.Regex("appunti"),reply_repo_appunti))  #todo: regex
+    application.add_handler(MessageHandler(filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),reply_repo_appunti))  #may be too generic
 
     application.run_polling()
 
