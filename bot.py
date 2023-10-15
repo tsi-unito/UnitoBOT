@@ -14,6 +14,7 @@ from telegram.constants import MessageEntityType, ParseMode, ChatType
 from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler
 
 from data.botchat import BotChat
+from data.botuser import BotUser
 
 
 def load_api_key(path: str) -> str:
@@ -243,23 +244,25 @@ async def send_rappresentanti_message(update: Update):
                                     parse_mode=ParseMode.HTML)
 
 
-def user_has_role(user: TelegramUser, accepted_roles: list[str]) -> bool:
-    # todo use database
-    return True
+def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session) -> bool:
+    roles = session.query(BotUser.role).filter_by(telegram_user_id=user.id).all()
+    roles = set(map(lambda t: t[0], roles))
+
+    return len(roles.intersection(accepted_roles)) > 0
 
 
 # noinspection DuplicatedCode
 async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
 
-    # master role is for who manages the bot.
-    if not user_has_role(message.from_user, [BOT_ROLE_MASTER]):
-        # We might already be administrators in the group, try to delete it
-        await delete_message(message)
-        return
-
     # https://docs.sqlalchemy.org/en/20/tutorial/orm_data_manipulation.html#closing-a-session
     with Session(engine) as session:
+        # master role is for who manages the bot.
+        if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
+            # We might already be administrators in the group, try to delete it
+            await delete_message(message)
+            return
+
         db_entry = session.query(BotChat.telegram_chat_id).filter_by(telegram_chat_id=message.chat.id).first()
 
         if db_entry is not None:
