@@ -1,5 +1,6 @@
 import datetime
 import json
+from typing import Any
 
 import telegram.error
 from telegram import *
@@ -314,7 +315,77 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # await message.reply_text(admins)
 
 
-async def moderator_function(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def kick_user(update: Update, context: ContextTypes.DEFAULT_TYPE, args: dict[str, Any]):
+    user_id = args.get("user_id")
+    user_name = args.get("user_name")
+    message_thread = args.get("message_thread")
+
+    chat = update.message.chat
+    user_mention = telegram.helpers.mention_html(user_id, user_name)
+    kick_interval = datetime.datetime.now() + datetime.timedelta(seconds=30)
+
+    await chat.ban_member(user_id=user_id, until_date=kick_interval)
+    await chat.unban_member(user_id=user_id)
+
+    # await delete_message(message)
+
+    if message_thread is None:
+        await chat.send_message(
+            f"<b>{user_mention}</b> è stato kickato",
+            parse_mode=ParseMode.HTML)
+    else:
+        await chat.send_message(
+            f"<b>{user_mention}</b> è stato kickato",
+            message_thread_id=message_thread,
+            parse_mode=ParseMode.HTML)
+
+def get_cmd_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Function to get the callback function based on the command sent to chat.
+    """
+    # Check which command is launched
+    entities: dict[MessageEntity, str] = update.message.parse_entities([MessageEntityType.BOT_COMMAND])
+
+    command: str = entities.popitem()[1].strip("/")
+
+    match command:
+        case "kick":
+            return kick_user
+
+    return None
+
+
+async def get_mentioned_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    message_thread = message.message_thread_id
+
+    entities: list[MessageEntity] = list(
+        message.parse_entities([MessageEntityType.TEXT_MENTION, MessageEntityType.MENTION]))
+
+    # Check if the message contains MENTION entities
+    contains_mention_entities: bool = any(map(lambda e: e.type == MessageEntityType.MENTION, entities))
+
+    # If the message contains MENTION entities, we need to ensure that the user is in the DB
+    if contains_mention_entities:
+        # TODO check if the user is in the DB
+        await message.reply_text(
+            f"<b>Errore: </b> utente non trovato, rispondi ad un suo messaggio per esequire l'azione",
+            quote=False,
+            message_thread_id=message_thread,
+            parse_mode=ParseMode.HTML)
+        return None
+
+    user_id = entities[0].user.id
+    user_name = entities[0].user.full_name
+
+    # TODO return user_id, user_name or User object? Depends on DB implementation
+    return user_id, user_name
+
+
+async def execute_for_quote_and_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """ Function to execute commands in case of reply or mention to a user.
+        It gets a callback function based on the command sent to chat, and executes it.
+        It can execute the callback function distinguishing between a reply to a message and a mention to a user.
+    """
     message = update.message
     message_thread = message.message_thread_id
     chat = message.chat
@@ -326,16 +397,14 @@ async def moderator_function(update: Update, context: ContextTypes.DEFAULT_TYPE)
                                  parse_mode=ParseMode.HTML)
         return
 
-    # Check which command is launched
-    entities: dict[MessageEntity, str] = update.message.parse_entities([MessageEntityType.BOT_COMMAND])
-
-    command: str = entities.popitem()[1].strip("/")
-
-    if (context.args is None or len(context.args) <= 0) and message.reply_to_message is None:
-        await message.reply_text("Devi rispondere al messaggio di un utente o fornire il suo username/id")
-        return
-
     if chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        if (context.args is None or len(context.args) <= 0) and message.reply_to_message is None:
+            await message.reply_text("Devi rispondere al messaggio di un utente o fornire il suo username/id")
+            return
+
+        # Get the function to call based on the command sent to chat
+        callback = get_cmd_callback(update, context)
+
         reply_message = message.reply_to_message
         # This is a temporary fix because the library tells us that the user has replied with the command to another
         # user, while in reality they did not. Right now we check if the reply is towards a message/sticker/audio
@@ -345,65 +414,30 @@ async def moderator_function(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 reply_message.audio is not None)
 
         if is_replying:
-            # We must use the message thread id of the message replied
-            message_thread = message.reply_to_message.message_thread_id
-
             # Get user id to kick from the reply message
-            user_name = message.reply_to_message.from_user.full_name
-            user_id = message.reply_to_message.from_user.id
-            user_mention = telegram.helpers.mention_html(user_id, user_name)
+            user_name = reply_message.from_user.full_name
+            user_id = reply_message.from_user.id
 
-            # Kick user by banning him for 1 second, kick method deprecated
+            my_args = dict()
+            my_args["user_id"] = user_id
+            my_args["user_name"] = user_name
+            my_args["message_thread"] = None
+            my_args["is_replying"] = True
+            await callback(update, context, my_args)
 
-            # todo behave on the basis of the command
-            one_sec_interval = datetime.datetime.now() + datetime.timedelta(seconds=30)
-            await chat.ban_member(user_id=user_id, until_date=one_sec_interval)
-            await chat.unban_member(user_id=user_id)
-
-            # Delete message sent by the kicked user
-            await delete_message(reply_message)
-
-            await message.reply_text(
-                f"<b>{user_mention}</b> è stato kickato",
-                quote=False,
-                message_thread_id=message_thread,
-                parse_mode=ParseMode.HTML)
         else:
-            entities: list[MessageEntity] = list(message.parse_entities([MessageEntityType.TEXT_MENTION, MessageEntityType.MENTION]))
+            user_id, user_name = await get_mentioned_user(update, context)
 
-            # Check if the message contains MENTION entities
-            contains_mention_entities = any(map(lambda e: e.type == MessageEntityType.MENTION, entities))
-
-            # If the message contains MENTION entities, we need to ensure that the user is in the DB
-            if contains_mention_entities:
-                # todo check if the user is in the DB
-                await message.reply_text(
-                    f"<b>Errore: </b> utente non trovato, rispondi ad un suo messaggio per esequire l'azione",
-                    quote=False,
-                    message_thread_id=message_thread,
-                    parse_mode=ParseMode.HTML)
-                return
-
-            user_id = entities[0].user.id
-            user_name = entities[0].user.full_name
-            user_mention = telegram.helpers.mention_html(user_id, user_name)
-
-            await message.reply_text(
-                f"<b>{user_mention}</b> è stato kickato",
-                quote=False,
-                message_thread_id=message_thread,
-                parse_mode=ParseMode.HTML)
-
-            # Kick user by banning him for 1 second, kick method deprecated
-            # todo behave on the basis of the command
-            one_sec_interval = datetime.datetime.now() + datetime.timedelta(seconds=30)
-            await chat.ban_member(user_id=user_id, until_date=one_sec_interval)
-            await chat.unban_member(user_id=user_id)
+            my_args = dict()
+            my_args["user_id"] = user_id
+            my_args["user_name"] = user_name
+            my_args["message_thread"] = message_thread
+            my_args["is_replying"] = False
+            await callback(update, context, my_args)
 
     else:
-        await message.reply_text(
+        await chat.send_message(
             f"<b>Comando non disponibile in chat private</b>",
-            quote=False,
             message_thread_id=message_thread,
             parse_mode=ParseMode.HTML)
 
@@ -421,7 +455,7 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
-    application.add_handler(CommandHandler(["kick"], moderator_function))
+    application.add_handler(CommandHandler(["kick"], execute_for_quote_and_reply))
 
     application.run_polling()
 
