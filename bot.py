@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session
 from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
     ChatMemberAdministrator
 from telegram.constants import MessageEntityType, ParseMode, ChatType
-from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler
+from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler, MessageHandler, filters, \
+    CallbackQueryHandler, CallbackContext
 
 from data.botchat import BotChat
 from data.botuser import BotUser
+from data.question import Question
 
 
 def load_api_key(path: str) -> str:
@@ -45,7 +47,7 @@ _initialization_link_list = [
     ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
     ResourceData(["anno3"], "Gruppo per gli Studenti del Terzo Anno",
                  "https://t.me/joinchat/UmWgshpk8MXD_Y4KvLyU8A"),
-    ResourceData(["links"], "Lista dei link", "https://tsi-unito.eu/links"),
+    ResourceData(["link", "links"], "Lista dei link", "https://tsi-unito.eu/links"),
     ResourceData(["lavoratori"], "Gruppo Studenti Lavoratori", "https://t.me/joinchat/QC1UEhvITLJNL33noRtszQ"),
     ResourceData(["internazionali", "international"], "International Students Group",
                  "https://t.me/international_students_CS_unito"),
@@ -190,7 +192,7 @@ async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await message.reply_html(
                         f"Ciao! Attualmente la funzionalità che hai richiesto non è disponibile.\n"
                         f"Se credi che questo sia un errore, inoltra questo messaggio a @Stefa168.\n\n"
-                        f"payload: {payload}")
+                        f"<code>payload: {payload}</code>")
 
     await delete_message(message)
 
@@ -253,12 +255,39 @@ def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session
 
 
 async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_html(f"Ciao {update.message.from_user.full_name}, puoi trovare molti appunti gratuiti "
-                                    f"sulla <b>Guida degli Studenti</b>\n\n"
-                                    f" » <a href='https://github.com/tsi-unito/guida_degli_studenti_di/tree/master"
-                                    f"/Materie'>Appunti</a>",
-                                    quote=True,
-                                    message_thread_id=update.message.message_thread_id)
+    message = update.message
+
+    with Session(engine) as session:
+        question = Question(message.message_id, message.from_user.id, message.text)
+
+        session.add(question)
+        # IT IS CRUCIAL TO FLUSH TO REGISTER THE DATA ON THE DB
+        # Otherwise, some fields won't be populated.
+        session.flush()
+
+        feedback_kb = InlineKeyboardMarkup.from_row([
+            InlineKeyboardButton(emojize("Utile :thumbsup:", language="alias"),
+                                 callback_data=f"upvote-{question.id}"),
+            InlineKeyboardButton(emojize("Non utile :thumbsdown:", language="alias"),
+                                 callback_data=f"downvote-{question.id}")
+        ])
+
+        # todo1
+        #  If the original message is edited, we should stop tracking for feedback.
+        #  Also, we should check if the user is banned from giving feedback.
+        #  No more than one feedback point (negative or positive) can be assigned by one user on a message.
+        await update.message.reply_html(
+            f"Ciao {update.message.from_user.full_name}, puoi trovare molti appunti gratuiti "
+            f"sulla <b>Guida degli Studenti</b>\n\n"
+            f" » <a href='https://github.com/tsi-unito/guida_degli_studenti_di/tree/master"
+            f"/Materie'>Appunti</a>\n\n"
+            f"(Messaggio automatico, lascia un feedback se ritieni che possa essere utile!)",
+            quote=True,
+            message_thread_id=update.message.message_thread_id,
+            disable_web_page_preview=True,
+            reply_markup=feedback_kb)
+
+        session.commit()
 
 
 # noinspection DuplicatedCode
@@ -348,6 +377,11 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             session.rollback()
 
 
+async def handle_auto_feedback(update: Update, context: CallbackContext):
+    query = update.callback_query
+    print(query)
+
+
 def main(api_key: str) -> None:
     application: Application = ApplicationBuilder().token(api_key).build()
 
@@ -359,7 +393,10 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
-    application.add_handler(MessageHandler(filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),reply_repo_appunti))  #may be too generic
+    application.add_handler(MessageHandler(
+        filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),
+        reply_repo_appunti))  # may be too generic
+    application.add_handler(CallbackQueryHandler(handle_auto_feedback))
 
     application.run_polling()
 
