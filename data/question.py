@@ -2,11 +2,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy.orm import Mapped, DeclarativeBase, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-class SQLAlchemyBase(DeclarativeBase):
-    pass
+from data.utils import SQLAlchemyBase
 
 
 @dataclass

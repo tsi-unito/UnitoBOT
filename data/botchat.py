@@ -1,32 +1,21 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, Table, Column, Integer, DateTime, BigInteger, Sequence
-from sqlalchemy.orm import Mapped, mapped_column, registry, DeclarativeBase
+import sqlalchemy as sa
 
-mapper_registry = registry()
+from sqlalchemy.orm import Mapped, mapped_column
+from data.utils import SQLAlchemyBase
 
-
-# The annotation is needed to avoid having to declare a boilerplate class...
-# https://docs.sqlalchemy.org/en/20/orm/declarative_styles.html#declarative-mapping-using-a-decorator-no-declarative-base
-@mapper_registry.mapped
 @dataclass
-class BotChat:
-    _tablename = "chats"
-    _id_seq = Sequence(_tablename+"_id_seq")
-    __table__ = Table(
-        _tablename,
-        mapper_registry.metadata,
-        Column("id", Integer(), primary_key=True, server_default=_id_seq.next_value(), nullable=False), #primary_key=True, index=True, unique=True, nullable=False, autoincrement=True),
-        Column("added_on", DateTime(), server_default=func.now(), nullable=False),
-        Column("telegram_chat_id", BigInteger(), index=True, unique=True, nullable=False)
-    )
+class BotChat(SQLAlchemyBase):
+    __tablename__ = "chats"
 
-    id: int
-    added_on: datetime
-    telegram_chat_id: int
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
+    added_on: Mapped[datetime] = mapped_column(server_default=sa.func.now(), nullable=False)
+    telegram_chat_id: Mapped[int] = mapped_column(sa.BigInteger, index=True, unique=True, nullable=False)
 
     def __init__(self, telegram_chat_id: int):
+        # noinspection PyTypeChecker
         self.telegram_chat_id = telegram_chat_id
 
     def __repr__(self):
