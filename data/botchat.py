@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 from data.utils import SQLAlchemyBase
 
+
 @dataclass
 class BotChat(SQLAlchemyBase):
     __tablename__ = "chats"
@@ -15,6 +16,7 @@ class BotChat(SQLAlchemyBase):
     telegram_chat_id: Mapped[int] = mapped_column(sa.BigInteger, index=True, unique=True, nullable=False)
 
     def __init__(self, telegram_chat_id: int):
+        super().__init__()
         # noinspection PyTypeChecker
         self.telegram_chat_id = telegram_chat_id
 
