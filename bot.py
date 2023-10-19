@@ -389,13 +389,21 @@ async def handle_auto_feedback(update: Update, context: CallbackContext):
         f: Feedback | None = session.scalars(stmt).one_or_none()
 
         if f is not None:
-            # todo remove feedback if button touched again, or change with new feedback if it isn't the same.
+            answer_message: str
+
+            if f.value == action:
+                session.delete(f)
+                answer_message = "Feedback rimosso!"
+            else:
+                f.value = action
+                f.raw_data = query.data
+                answer_message = "Feedback aggiornato!"
+
             await context.bot.answer_callback_query(callback_query_id=query.id,
-                                                    text="TODO",
+                                                    text=answer_message,
                                                     show_alert=True)
         else:
             new_f = Feedback(question_id, user_id, action, query.data)
-
             session.add(new_f)
 
             await context.bot.answer_callback_query(callback_query_id=query.id,
