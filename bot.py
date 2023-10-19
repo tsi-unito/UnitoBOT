@@ -6,18 +6,18 @@ import sqlalchemy
 import telegram.error
 
 from emoji import emojize
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select as sql_select
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
-    ChatMemberAdministrator
+    ChatMemberAdministrator, CallbackQuery
 from telegram.constants import MessageEntityType, ParseMode, ChatType
 from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler, MessageHandler, filters, \
     CallbackQueryHandler, CallbackContext
 
 from data.botchat import BotChat
 from data.botuser import BotUser
-from data.question import Question
+from data.question import Question, Feedback
 
 
 def load_api_key(path: str) -> str:
@@ -378,8 +378,31 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_auto_feedback(update: Update, context: CallbackContext):
-    query = update.callback_query
-    print(query)
+    with Session(engine) as session:
+        query: CallbackQuery = update.callback_query
+        data: list[str] = query.data.split("-")
+        action = data[0]
+        question_id = int(data[1])
+        user_id = query.from_user.id
+
+        stmt = sql_select(Feedback).filter_by(question_id=question_id, user_id=user_id)
+        f: Feedback | None = session.scalars(stmt).one_or_none()
+
+        if f is not None:
+            # todo remove feedback if button touched again, or change with new feedback if it isn't the same.
+            await context.bot.answer_callback_query(callback_query_id=query.id,
+                                                    text="TODO",
+                                                    show_alert=True)
+        else:
+            new_f = Feedback(question_id, user_id, action, query.data)
+
+            session.add(new_f)
+
+            await context.bot.answer_callback_query(callback_query_id=query.id,
+                                                    text="Grazie per il feedback!",
+                                                    show_alert=True)
+
+        session.commit()
 
 
 def main(api_key: str) -> None:
