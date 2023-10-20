@@ -24,11 +24,8 @@ services:
       - POSTGRES_USER=bot
       - POSTGRES_PASSWORD=bot
       - POSTGRES_DB=bot
-      - API_KEY_FILE=api_key_file
     ports:
       - "5432:5432"
-    secrets:
-      - api_key_file
 
 secrets:
     api_key_file:
