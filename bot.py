@@ -441,11 +441,11 @@ if __name__ == '__main__':
     # https://docs.sqlalchemy.org/en/20/core/engines.html#creating-urls-programmatically
     engine = create_engine(sqlalchemy.URL.create(
         "postgresql",
-        username="bot",
+        username=os.getenv('DB_USER') if os.getenv('DB_USER') is not None else "bot",
         # Adding the parsing already in preparation for the settings file.
-        password=urllib.parse.quote_plus("bot"),
-        host="localhost",
-        database="bot"
+        password=urllib.parse.quote_plus(os.getenv('DB_PASSWORD') if os.getenv('DB_PASSWORD') is not None else "bot"),
+        host=os.getenv('DB_HOST') if os.getenv('DB_HOST') is not None else "localhost",
+        database=os.getenv('DATABASE') if os.getenv('DATABASE') is not None else "bot"
     ))
 
     logging.basicConfig()
