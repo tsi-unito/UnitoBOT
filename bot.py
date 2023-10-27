@@ -1,5 +1,4 @@
 import logging
-import typing
 import urllib.parse
 import os
 
@@ -409,6 +408,80 @@ async def handle_auto_feedback(update: Update, context: CallbackContext):
         session.commit()
 
 
+async def command_reload_settings(update: Update, context: CallbackContext):
+    message = update.message
+
+    with Session(engine) as session:
+        # master role is for who manages the bot.
+        if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
+            await delete_message(message)
+            return
+
+        user_name = message.from_user.full_name
+        user_id = message.from_user.id
+        user_mention = telegram.helpers.mention_html(user_id, user_name)
+
+        enabled, disabled = reload_settings(context.application, session)
+
+        if len(enabled) + len(disabled) > 0:
+            reply_message = f"{user_mention} ho ricaricato le impostazioni!\nEcco i cambiamenti:\n\n"
+
+            if len(enabled) > 0:
+                reply_message += "<b>:white_check_mark: Funzionalità abilitate</b>:\n"
+
+                for feature in enabled:
+                    reply_message += f" • {feature}\n"
+
+            if len(disabled) > 0:
+                reply_message += "<b>:x: Funzionalità disabilitate</b>:\n"
+
+                for feature in disabled:
+                    reply_message += f" • {feature}\n"
+        else:
+            reply_message = f"Non c'era nulla da cambiare nelle impostazioni {user_mention}. :confused:"
+
+        await message.reply_html(emojize(reply_message, language="alias"),
+                                 quote=False,
+                                 message_thread_id=message.message_thread_id)
+        await message.delete()
+
+
+def reload_settings(application: telegram.ext.Application, session: Session, startup=False) \
+        -> tuple[list[str], list[str]]:
+    global settings
+
+    # First of all let's reload all the settings from the DB
+    settings = load_config_from_db(session)
+    enabled_features, disabled_features = [], []
+
+    # Now we iterate over every handler
+    for setting_name, handler in _handlers.items():
+        # If the new settings include a specific setting
+        if setting_name in settings.keys():
+            new_status = settings.get(setting_name) == "true"
+            # Handlers is a dictionary of int -> list[Handler]...
+            # if there are issues in the future, just flatten handlers.values()
+            handler_enabled = handler in application.handlers.get(0)
+
+            # Avoid adding the handler a second time, or trying to remove None...
+            if not startup and new_status == handler_enabled:
+                continue
+
+            # If the setting tells us to enable a handler, enable it; disable it otherwise!
+            if new_status:
+                application.add_handler(handler)
+                enabled_features.append(setting_name)
+            else:
+                application.remove_handler(handler)
+                disabled_features.append(setting_name)
+        else:
+            # remove the handler as a failsafe if it isn't in the settings
+            application.remove_handler(handler)
+            disabled_features.append(setting_name)
+
+    return enabled_features, disabled_features
+
+
 def main(api_key: str) -> None:
     application: Application = ApplicationBuilder().token(api_key).build()
 
@@ -420,18 +493,35 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
-
-    _val = settings["enable_automatic_notes_suggestion"]
-    if _val is not None and bool(_val):
-        # todo Needs substantial improvements/
-        application.add_handler(MessageHandler(
-            filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),
-            reply_repo_appunti))
-
     application.add_handler(CallbackQueryHandler(handle_auto_feedback))
+    application.add_handler(CommandHandler(["reload"], command_reload_settings))
+
+    with Session(engine) as _session:
+        reload_settings(application, _session, startup=True)
 
     application.run_polling()
 
+
+def load_config_from_db(session: Session) -> dict[str, str]:
+    res = session.query(Setting).all()
+
+    ss: dict[str, str] = {}
+    for s in res:
+        ss[s.setting_name] = s.value
+
+    return ss
+
+
+_handlers = {
+    # todo Needs substantial improvements
+    "automatic_notes_suggestion":
+        MessageHandler(
+            callback=reply_repo_appunti,
+            filters=filters.Regex(
+                "(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"
+            )
+        )
+}
 
 if __name__ == '__main__':
     def load_api_key(path: str) -> str:
@@ -453,21 +543,7 @@ if __name__ == '__main__':
         database=os.getenv('DATABASE') if os.getenv('DATABASE') is not None else "bot"
     ))
 
-
-    def load_config_from_db(engine: sqlalchemy.Engine) -> dict[str, str]:
-        with Session(engine) as session:
-            res = session.query(Setting).all()
-
-            ss: dict[str, str] = {}
-            for s in res:
-                ss[s.setting_name] = s.value
-
-            return ss
-
-
     logging.basicConfig()
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-
-    settings = load_config_from_db(engine)
 
     main(_key)
