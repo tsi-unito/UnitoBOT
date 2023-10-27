@@ -6,22 +6,19 @@ import sqlalchemy
 import telegram.error
 
 from emoji import emojize
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select as sql_select
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session
 from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
-    ChatMemberAdministrator
+    ChatMemberAdministrator, CallbackQuery
 from telegram.constants import MessageEntityType, ParseMode, ChatType
-from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler
+from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler, MessageHandler, filters, \
+    CallbackQueryHandler, CallbackContext
 
 from data.botchat import BotChat
 from data.botuser import BotUser
-
-
-def load_api_key(path: str) -> str:
-    with open(path, 'r') as f:
-        return f.read().strip()
-
+from data.question import Question, Feedback
+from data.setting import Setting
 
 BOT_ROLE_MASTER = "master"
 
@@ -45,7 +42,7 @@ _initialization_link_list = [
     ResourceData(["anno2"], "Gruppo per gli Studenti del Secondo Anno", "https://t.me/joinchat/huoxYswWOLQ5Mjk0"),
     ResourceData(["anno3"], "Gruppo per gli Studenti del Terzo Anno",
                  "https://t.me/joinchat/UmWgshpk8MXD_Y4KvLyU8A"),
-    ResourceData(["links"], "Lista dei link", "https://tsi-unito.eu/links"),
+    ResourceData(["link", "links"], "Lista dei link", "https://tsi-unito.eu/links"),
     ResourceData(["lavoratori"], "Gruppo Studenti Lavoratori", "https://t.me/joinchat/QC1UEhvITLJNL33noRtszQ"),
     ResourceData(["internazionali", "international"], "International Students Group",
                  "https://t.me/international_students_CS_unito"),
@@ -190,7 +187,7 @@ async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await message.reply_html(
                         f"Ciao! Attualmente la funzionalità che hai richiesto non è disponibile.\n"
                         f"Se credi che questo sia un errore, inoltra questo messaggio a @Stefa168.\n\n"
-                        f"payload: {payload}")
+                        f"<code>payload: {payload}</code>")
 
     await delete_message(message)
 
@@ -253,12 +250,39 @@ def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session
 
 
 async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_html(f"Ciao {update.message.from_user.full_name}, puoi trovare molti appunti gratuiti "
-                                    f"sulla <b>Guida degli Studenti</b>\n\n"
-                                    f" » <a href='https://github.com/tsi-unito/guida_degli_studenti_di/tree/master"
-                                    f"/Materie'>Appunti</a>",
-                                    quote=True,
-                                    message_thread_id=update.message.message_thread_id)
+    message = update.message
+
+    with Session(engine) as session:
+        question = Question(message.message_id, message.from_user.id, message.text)
+
+        session.add(question)
+        # IT IS CRUCIAL TO FLUSH TO REGISTER THE DATA ON THE DB
+        # Otherwise, some fields won't be populated.
+        session.flush()
+
+        feedback_kb = InlineKeyboardMarkup.from_row([
+            InlineKeyboardButton(emojize("Utile :thumbsup:", language="alias"),
+                                 callback_data=f"upvote-{question.id}"),
+            InlineKeyboardButton(emojize("Non utile :thumbsdown:", language="alias"),
+                                 callback_data=f"downvote-{question.id}")
+        ])
+
+        # todo1
+        #  If the original message is edited, we should stop tracking for feedback.
+        #  Also, we should check if the user is banned from giving feedback.
+        #  No more than one feedback point (negative or positive) can be assigned by one user on a message.
+        await update.message.reply_html(
+            f"Ciao {update.message.from_user.full_name}, puoi trovare molti appunti gratuiti "
+            f"sulla <b>Guida degli Studenti</b>\n\n"
+            f" » <a href='https://github.com/tsi-unito/guida_degli_studenti_di/tree/master"
+            f"/Materie'>Appunti</a>\n\n"
+            f"(Messaggio automatico, lascia un feedback se ritieni che possa essere utile!)",
+            quote=True,
+            message_thread_id=update.message.message_thread_id,
+            disable_web_page_preview=True,
+            reply_markup=feedback_kb)
+
+        session.commit()
 
 
 # noinspection DuplicatedCode
@@ -348,6 +372,116 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             session.rollback()
 
 
+async def handle_auto_feedback(update: Update, context: CallbackContext):
+    with Session(engine) as session:
+        query: CallbackQuery = update.callback_query
+        data: list[str] = query.data.split("-")
+        action = data[0]
+        question_id = int(data[1])
+        user_id = query.from_user.id
+
+        stmt = sql_select(Feedback).filter_by(question_id=question_id, user_id=user_id)
+        f: Feedback | None = session.scalars(stmt).one_or_none()
+
+        if f is not None:
+            answer_message: str
+
+            if f.value == action:
+                session.delete(f)
+                answer_message = "Feedback rimosso!"
+            else:
+                f.value = action
+                f.raw_data = query.data
+                answer_message = "Feedback aggiornato!"
+
+            await context.bot.answer_callback_query(callback_query_id=query.id,
+                                                    text=answer_message,
+                                                    show_alert=True)
+        else:
+            new_f = Feedback(question_id, user_id, action, query.data)
+            session.add(new_f)
+
+            await context.bot.answer_callback_query(callback_query_id=query.id,
+                                                    text="Grazie per il feedback!",
+                                                    show_alert=True)
+
+        session.commit()
+
+
+async def command_reload_settings(update: Update, context: CallbackContext):
+    message = update.message
+
+    with Session(engine) as session:
+        # master role is for who manages the bot.
+        if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
+            await delete_message(message)
+            return
+
+        user_name = message.from_user.full_name
+        user_id = message.from_user.id
+        user_mention = telegram.helpers.mention_html(user_id, user_name)
+
+        enabled, disabled = reload_settings(context.application, session)
+
+        if len(enabled) + len(disabled) > 0:
+            reply_message = f"{user_mention} ho ricaricato le impostazioni!\nEcco i cambiamenti:\n\n"
+
+            if len(enabled) > 0:
+                reply_message += "<b>:white_check_mark: Funzionalità abilitate</b>:\n"
+
+                for feature in enabled:
+                    reply_message += f" • {feature}\n"
+
+            if len(disabled) > 0:
+                reply_message += "<b>:x: Funzionalità disabilitate</b>:\n"
+
+                for feature in disabled:
+                    reply_message += f" • {feature}\n"
+        else:
+            reply_message = f"Non c'era nulla da cambiare nelle impostazioni {user_mention}. :confused:"
+
+        await message.reply_html(emojize(reply_message, language="alias"),
+                                 quote=False,
+                                 message_thread_id=message.message_thread_id)
+        await message.delete()
+
+
+def reload_settings(application: telegram.ext.Application, session: Session, startup=False) \
+        -> tuple[list[str], list[str]]:
+    global settings
+
+    # First of all let's reload all the settings from the DB
+    settings = load_config_from_db(session)
+    enabled_features, disabled_features = [], []
+
+    # Now we iterate over every handler
+    for setting_name, handler in _handlers.items():
+        # If the new settings include a specific setting
+        if setting_name in settings.keys():
+            new_status = settings.get(setting_name) == "true"
+            # Handlers is a dictionary of int -> list[Handler]...
+            # if there are issues in the future, just flatten handlers.values()
+            handler_enabled = handler in application.handlers.get(0)
+
+            # Avoid adding the handler a second time, or trying to remove None...
+            if not startup and new_status == handler_enabled:
+                continue
+
+            # If the setting tells us to enable a handler, enable it; disable it otherwise!
+            if new_status:
+                application.add_handler(handler)
+                enabled_features.append(setting_name)
+            else:
+                application.remove_handler(handler)
+                disabled_features.append(setting_name)
+        else:
+            # remove the handler as a failsafe if it isn't in the settings
+            application.remove_handler(handler)
+            disabled_features.append(setting_name)
+
+    return enabled_features, disabled_features
+
+
 def main(api_key: str) -> None:
     application: Application = ApplicationBuilder().token(api_key).build()
 
@@ -359,25 +493,54 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
-    application.add_handler(MessageHandler(filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),reply_repo_appunti))  #may be too generic
+    application.add_handler(CallbackQueryHandler(handle_auto_feedback))
+    application.add_handler(CommandHandler(["reload"], command_reload_settings))
+
+    with Session(engine) as _session:
+        reload_settings(application, _session, startup=True)
 
     application.run_polling()
 
 
+def load_config_from_db(session: Session) -> dict[str, str]:
+    res = session.query(Setting).all()
+
+    ss: dict[str, str] = {}
+    for s in res:
+        ss[s.setting_name] = s.value
+
+    return ss
+
+
+_handlers = {
+    # todo Needs substantial improvements
+    "automatic_notes_suggestion":
+        MessageHandler(
+            callback=reply_repo_appunti,
+            filters=filters.Regex(
+                "(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"
+            )
+        )
+}
+
 if __name__ == '__main__':
+    def load_api_key(path: str) -> str:
+        with open(path, 'r') as f:
+            return f.read().strip()
+
+
     _api_key_path: str = os.getenv('API_KEY_FILE') if os.getenv('API_KEY_FILE') is not None else "./api_key"
     _key = load_api_key(_api_key_path)
 
     # todo improve (singleton? anyway, something to avoid having a global)
-    global engine
     # https://docs.sqlalchemy.org/en/20/core/engines.html#creating-urls-programmatically
     engine = create_engine(sqlalchemy.URL.create(
         "postgresql",
-        username="bot",
+        username=os.getenv('DB_USER') if os.getenv('DB_USER') is not None else "bot",
         # Adding the parsing already in preparation for the settings file.
-        password=urllib.parse.quote_plus("bot"),
-        host="localhost",
-        database="bot"
+        password=urllib.parse.quote_plus(os.getenv('DB_PASSWORD') if os.getenv('DB_PASSWORD') is not None else "bot"),
+        host=os.getenv('DB_HOST') if os.getenv('DB_HOST') is not None else "localhost",
+        database=os.getenv('DATABASE') if os.getenv('DATABASE') is not None else "bot"
     ))
 
     logging.basicConfig()

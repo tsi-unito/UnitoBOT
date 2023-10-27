@@ -10,6 +10,10 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
         - API_KEY_FILE=/run/secrets/api_key_file
+        - DB_HOST=postgres
+        - DB_USER=bot
+        - DB_PASSWORD=bot
+        - DATABASE=bot
     depends_on:
         - postgres
     secrets:
