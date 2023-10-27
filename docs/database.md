@@ -97,3 +97,18 @@ comment on column public.users.role is 'Ruolo che l''utente ha nei confronti del
 alter table public.users
     owner to bot;
 ```
+
+## Settings
+
+```postgresql
+create table public.persistent_settings
+(
+    setting_name varchar not null
+        constraint persistent_settings_pk
+            primary key,
+    value        varchar
+);
+
+alter table public.persistent_settings
+    owner to bot;
+```

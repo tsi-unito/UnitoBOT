@@ -1,4 +1,5 @@
 import logging
+import typing
 import urllib.parse
 import os
 
@@ -18,12 +19,7 @@ from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandH
 from data.botchat import BotChat
 from data.botuser import BotUser
 from data.question import Question, Feedback
-
-
-def load_api_key(path: str) -> str:
-    with open(path, 'r') as f:
-        return f.read().strip()
-
+from data.setting import Setting
 
 BOT_ROLE_MASTER = "master"
 
@@ -424,20 +420,29 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["start"], command_start))
     application.add_handler(CommandHandler(["rappresentanti", "rapp"], command_rappresentanti))
     application.add_handler(CommandHandler(["activate"], command_activate))
-    application.add_handler(MessageHandler(
-        filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),
-        reply_repo_appunti))  # may be too generic
+
+    _val = settings["enable_automatic_notes_suggestion"]
+    if _val is not None and bool(_val):
+        # todo Needs substantial improvements/
+        application.add_handler(MessageHandler(
+            filters.Regex("(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"),
+            reply_repo_appunti))
+
     application.add_handler(CallbackQueryHandler(handle_auto_feedback))
 
     application.run_polling()
 
 
 if __name__ == '__main__':
+    def load_api_key(path: str) -> str:
+        with open(path, 'r') as f:
+            return f.read().strip()
+
+
     _api_key_path: str = os.getenv('API_KEY_FILE') if os.getenv('API_KEY_FILE') is not None else "./api_key"
     _key = load_api_key(_api_key_path)
 
     # todo improve (singleton? anyway, something to avoid having a global)
-    global engine
     # https://docs.sqlalchemy.org/en/20/core/engines.html#creating-urls-programmatically
     engine = create_engine(sqlalchemy.URL.create(
         "postgresql",
@@ -448,7 +453,21 @@ if __name__ == '__main__':
         database=os.getenv('DATABASE') if os.getenv('DATABASE') is not None else "bot"
     ))
 
+
+    def load_config_from_db(engine: sqlalchemy.Engine) -> dict[str, str]:
+        with Session(engine) as session:
+            res = session.query(Setting).all()
+
+            ss: dict[str, str] = {}
+            for s in res:
+                ss[s.setting_name] = s.value
+
+            return ss
+
+
     logging.basicConfig()
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
+    settings = load_config_from_db(engine)
 
     main(_key)
