@@ -6,9 +6,11 @@ import sqlalchemy
 import telegram.error
 
 from emoji import emojize
+from pydantic import Field, PostgresDsn
+from pydantic_settings import BaseSettings
 from sqlalchemy import create_engine, select as sql_select
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, registry
 from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
     ChatMemberAdministrator, CallbackQuery
 from telegram.constants import MessageEntityType, ParseMode, ChatType
@@ -19,6 +21,8 @@ from data.botchat import BotChat
 from data.botuser import BotUser
 from data.question import Question, Feedback
 from data.setting import Setting
+from data.utils import SQLAlchemyBase
+from session_maker import SessionMakerSingleton
 
 BOT_ROLE_MASTER = "master"
 
@@ -252,7 +256,9 @@ def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session
 async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
 
-    with Session(engine) as session:
+    session_maker = SessionMakerSingleton.get_session_maker()
+
+    with session_maker.begin() as session:
         question = Question(message.message_id, message.from_user.id, message.text)
 
         session.add(question)
@@ -267,7 +273,7 @@ async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE)
                                  callback_data=f"downvote-{question.id}")
         ])
 
-        # todo1
+        # todo
         #  If the original message is edited, we should stop tracking for feedback.
         #  Also, we should check if the user is banned from giving feedback.
         #  No more than one feedback point (negative or positive) can be assigned by one user on a message.
@@ -289,8 +295,10 @@ async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
 
+    session_maker = SessionMakerSingleton.get_session_maker()
+
     # https://docs.sqlalchemy.org/en/20/tutorial/orm_data_manipulation.html#closing-a-session
-    with Session(engine) as session:
+    with session_maker.begin() as session:
         # master role is for who manages the bot.
         if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
             # We might already be administrators in the group, try to delete it
@@ -373,7 +381,9 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_auto_feedback(update: Update, context: CallbackContext):
-    with Session(engine) as session:
+    session_maker = SessionMakerSingleton.get_session_maker()
+
+    with session_maker.begin() as session:
         query: CallbackQuery = update.callback_query
         data: list[str] = query.data.split("-")
         action = data[0]
@@ -411,7 +421,9 @@ async def handle_auto_feedback(update: Update, context: CallbackContext):
 async def command_reload_settings(update: Update, context: CallbackContext):
     message = update.message
 
-    with Session(engine) as session:
+    session_maker = SessionMakerSingleton.get_session_maker()
+
+    with session_maker.begin() as session:
         # master role is for who manages the bot.
         if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
             await delete_message(message)
@@ -496,8 +508,10 @@ def main(api_key: str) -> None:
     application.add_handler(CallbackQueryHandler(handle_auto_feedback))
     application.add_handler(CommandHandler(["reload"], command_reload_settings))
 
-    with Session(engine) as _session:
-        reload_settings(application, _session, startup=True)
+    session_maker = SessionMakerSingleton.get_session_maker()
+
+    with session_maker.begin() as session:
+        reload_settings(application, session, startup=True)
 
     application.run_polling()
 
@@ -523,27 +537,20 @@ _handlers = {
         )
 }
 
+
+class BotConfig(BaseSettings):
+    telegram_api_key: str = Field(..., env="TELEGRAM_API_KEY")
+    database_url: PostgresDsn = Field(..., env="DATABASE_URL")
+
+
 if __name__ == '__main__':
-    def load_api_key(path: str) -> str:
-        with open(path, 'r') as f:
-            return f.read().strip()
-
-
-    _api_key_path: str = os.getenv('API_KEY_FILE') if os.getenv('API_KEY_FILE') is not None else "./api_key"
-    _key = load_api_key(_api_key_path)
-
-    # todo improve (singleton? anyway, something to avoid having a global)
-    # https://docs.sqlalchemy.org/en/20/core/engines.html#creating-urls-programmatically
-    engine = create_engine(sqlalchemy.URL.create(
-        "postgresql",
-        username=os.getenv('DB_USER') if os.getenv('DB_USER') is not None else "bot",
-        # Adding the parsing already in preparation for the settings file.
-        password=urllib.parse.quote_plus(os.getenv('DB_PASSWORD') if os.getenv('DB_PASSWORD') is not None else "bot"),
-        host=os.getenv('DB_HOST') if os.getenv('DB_HOST') is not None else "localhost",
-        database=os.getenv('DATABASE') if os.getenv('DATABASE') is not None else "bot"
-    ))
+    config = BotConfig(_env_file=".env")
 
     logging.basicConfig()
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
-    main(_key)
+    SessionMakerSingleton.initialize(config.database_url.unicode_string())
+
+    SQLAlchemyBase.metadata.create_all(SessionMakerSingleton.get_engine())
+
+    main(config.telegram_api_key)
