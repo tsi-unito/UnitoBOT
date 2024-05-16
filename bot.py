@@ -12,13 +12,13 @@ from sqlalchemy import create_engine, select as sql_select
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.orm import Session, registry
 from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
-    ChatMemberAdministrator, CallbackQuery
+    ChatMemberAdministrator, CallbackQuery, ChatPermissions, User
 from telegram.constants import MessageEntityType, ParseMode, ChatType
 from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler, MessageHandler, filters, \
     CallbackQueryHandler, CallbackContext
 
 from data.botchat import BotChat
-from data.botuser import BotUser
+from data.botuser import BotUser, Role, Status
 from data.question import Question, Feedback
 from data.setting import Setting
 from data.utils import SQLAlchemyBase
@@ -246,7 +246,8 @@ async def send_rappresentanti_message(update: Update):
                                     parse_mode=ParseMode.HTML)
 
 
-def user_has_role(user: TelegramUser, accepted_roles: set[str], session: Session) -> bool:
+def user_has_role(user: TelegramUser, accepted_roles: set[Role], session: Session) -> bool:
+    # Currently we will get only one role for a user because the model has been designed wrong. fixme
     roles = session.query(BotUser.role).filter_by(telegram_user_id=user.id).all()
     roles = set(map(lambda t: t[0], roles))
 
@@ -300,7 +301,7 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # https://docs.sqlalchemy.org/en/20/tutorial/orm_data_manipulation.html#closing-a-session
     with session_maker.begin() as session:
         # master role is for who manages the bot.
-        if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
+        if not user_has_role(message.from_user, {Role.MASTER}, session):
             # We might already be administrators in the group, try to delete it
             await delete_message(message)
             return
@@ -308,9 +309,7 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_entry = session.query(BotChat.telegram_chat_id).filter_by(telegram_chat_id=message.chat.id).first()
 
         if db_entry is not None:
-            user_name = message.from_user.full_name
-            user_id = message.from_user.id
-            user_mention = telegram.helpers.mention_html(user_id, user_name)
+            user_mention = mention_user(message.from_user)
 
             await message.reply_html(
                 emojize(f":warning: Il gruppo è già registrato {user_mention}!", language="alias"),
@@ -380,6 +379,10 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             session.rollback()
 
 
+def mention_user(user: User) -> str:
+    return telegram.helpers.mention_html(user.id, user.full_name)
+
+
 async def handle_auto_feedback(update: Update, context: CallbackContext):
     session_maker = SessionMakerSingleton.get_session_maker()
 
@@ -425,7 +428,7 @@ async def command_reload_settings(update: Update, context: CallbackContext):
 
     with session_maker.begin() as session:
         # master role is for who manages the bot.
-        if not user_has_role(message.from_user, {BOT_ROLE_MASTER}, session):
+        if not user_has_role(message.from_user, {Role.MASTER}, session):
             await delete_message(message)
             return
 
@@ -494,6 +497,82 @@ def reload_settings(application: telegram.ext.Application, session: Session, sta
     return enabled_features, disabled_features
 
 
+async def command_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    from_user = message.from_user
+
+    banned_user: User
+    # Let's retrieve the user_id of the soon-banned user.
+    if message.reply_to_message is not None:
+        banned_user = message.reply_to_message.from_user
+    else:
+        # todo extend the feature to be able to ban multiple users in one go
+        mentions = list(message.parse_entities(["MENTION"]).keys())
+
+        if len(mentions) <= 0:
+            # we need at least one user...
+            await message.reply_html(emojize(
+                f"{mention_user(from_user)} devi specificare un utente da bannare dopo il comando. "
+                f"Puoi anche usarlo rispondendo all'utente da bannare."))
+            await delete_message(message)
+            return
+
+        else:
+            banned_user = mentions[0].user
+
+    BANNED_PERMISSIONS = ChatPermissions(False, False, False, False, False, False, False, False, False, False, False,
+                                         False, False, False)
+
+    session_maker = SessionMakerSingleton.get_session_maker()
+    session: Session
+
+    with session_maker.begin() as session:
+        if not user_has_role(message.from_user, {Role.MASTER, Role.ADMIN}, session):
+            await delete_message(message)
+            return
+
+        groups = session.query(BotChat).all()
+        for group in groups:
+            chat = await context.bot.get_chat(group.telegram_chat_id)
+
+            result: bool
+            if chat.type == ChatType.GROUP:
+                # We can't ban the user, or they can join back. Let's simply limit the hell out of them.
+                # (Thanks Lapo, we love banning you!)
+                result = await chat.restrict_member(banned_user.id, BANNED_PERMISSIONS)
+            elif chat.type == ChatType.SUPERGROUP:
+                # A supergroup can manage the permaban by itself.
+                result = await context.bot.ban_chat_member(group.telegram_chat_id, banned_user.id)
+            else:
+                continue
+
+            print(f"User {banned_user.id} banned from chat {group.telegram_chat_id}: {result}")
+
+        banned_bot_user = BotUser(banned_user.id, status=Status.BANNED)
+        session.add(banned_bot_user)
+
+    await message.reply_html(f"L'utente {mention_user(banned_user)} è stato bannato dal Cosmo di DiUniTO.")
+
+
+async def command_get_group_infos(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+
+    session_maker = SessionMakerSingleton.get_session_maker()
+    session: Session
+    with session_maker.begin() as session:
+        if not user_has_role(message.from_user, {Role.MASTER, Role.ADMIN}, session):
+            await delete_message(message)
+            return
+
+    await message.reply_html("Ecco le informazioni del gruppo:\n\n"
+                             f"ID: {message.chat.id}\n"
+                             f"Nome: {message.chat.title}\n"
+                             f"Tipo: {message.chat.type}\n"
+                             f"Link: {message.chat.invite_link}\n"
+                             f"Username: {message.chat.username}\n"
+                             f"Descrizione: {message.chat.description}\n")
+
+
 def main(api_key: str) -> None:
     application: Application = ApplicationBuilder().token(api_key).build()
 
@@ -507,6 +586,8 @@ def main(api_key: str) -> None:
     application.add_handler(CommandHandler(["activate"], command_activate))
     application.add_handler(CallbackQueryHandler(handle_auto_feedback))
     application.add_handler(CommandHandler(["reload"], command_reload_settings))
+    application.add_handler(CommandHandler(["ban"], command_ban_user))
+    application.add_handler(CommandHandler(["info"], command_get_group_infos))
 
     session_maker = SessionMakerSingleton.get_session_maker()
 
