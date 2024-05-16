@@ -1,22 +1,37 @@
+import enum
 from dataclasses import dataclass
+import sqlalchemy as sqla
+from sqlalchemy import Column
+from sqlalchemy.orm import Mapped, mapped_column
+from data.utils import SQLAlchemyBase
 
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column, registry
 
-mapper_registry = registry()
+class Status(enum.Enum):
+    ACTIVE = 'active'
+    BANNED = 'banned'
 
 
-# The annotation is needed to avoid having to declare a boilerplate class...
-# https://docs.sqlalchemy.org/en/20/orm/declarative_styles.html#declarative-mapping-using-a-decorator-no-declarative-base
-@mapper_registry.mapped
+class Role(enum.Enum):
+    ADMIN = 'admin'
+    MASTER = 'master'
+
+
 @dataclass
-class BotUser:
+class BotUser(SQLAlchemyBase):
     __tablename__ = "users"
 
-    # WARNING! We're missing the definition of the table. If you're developing this, please take a look at botchat.py
+    telegram_user_id: int = Column(sqla.Integer, primary_key=True, index=True, unique=True, nullable=False)
+    status: Status = Column(sqla.Enum(Status),
+                            index=True, nullable=False, server_default=Status.ACTIVE.name, default=Status.ACTIVE)
+    role: str | None = Column(sqla.Enum(Role), index=True, nullable=True)
 
-    telegram_user_id: Mapped[int] = mapped_column(primary_key=True, index=True, unique=True, nullable=False)
-    role: Mapped[str] = mapped_column(index=True, nullable=False)
+    def __init__(self, telegram_user_id: int, role: str = None, status=Status.ACTIVE):
+        super().__init__()
+        # noinspection PyTypeChecker
+        self.telegram_user_id = telegram_user_id
+        # noinspection PyTypeChecker
+        self.role = role
+        self.status = status
 
     def __repr__(self):
         return f"<User(telegram_user_id={self.telegram_user_id}, role={self.role})>"
