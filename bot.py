@@ -24,6 +24,9 @@ from data.setting import Setting
 from data.utils import SQLAlchemyBase
 from session_maker import SessionMakerSingleton
 
+BOT_PROCESS_NAME = "bot"
+FORMATTER = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 BOT_ROLE_MASTER = "master"
 
 
@@ -139,7 +142,7 @@ async def delete_message(message):
         await message.delete()
     except telegram.error.BadRequest:
         # todo handle error by sending message also to log chat (see issue #8)
-        print(f"Errore durante la cancellazione del messaggio {message.id}")
+        logger.error(f"Errore durante la cancellazione del messaggio {message.id}")
 
 
 async def command_help(update: Update, _):
@@ -302,6 +305,7 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with session_maker.begin() as session:
         # master role is for who manages the bot.
         if not user_has_role(message.from_user, {Role.MASTER}, session):
+            logger.warning(f"A user tried to use /activate command.\n{message.from_user}\n{message.chat}")
             # We might already be administrators in the group, try to delete it
             await delete_message(message)
             return
@@ -374,8 +378,7 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                              f"Ecco alcuni dettagli:\n\n"
                                              f"<code>{str(e.orig).splitlines()[0]}</code>",
                                              language="alias"))
-            # todo use logger
-            print(e)
+            logger.exception(f"Couldn't activate group {message.chat}", e)
             session.rollback()
 
 
@@ -561,6 +564,8 @@ async def command_get_group_infos(update: Update, context: ContextTypes.DEFAULT_
     session: Session
     with session_maker.begin() as session:
         if not user_has_role(message.from_user, {Role.MASTER, Role.ADMIN}, session):
+            logger.warning(f"A user tried to use /activate command.\n{message.from_user}\n{message.chat}")
+            # We might already be administrators in the group, try to delete it
             await delete_message(message)
             return
 
@@ -568,12 +573,15 @@ async def command_get_group_infos(update: Update, context: ContextTypes.DEFAULT_
                              f"ID: {message.chat.id}\n"
                              f"Nome: {message.chat.title}\n"
                              f"Tipo: {message.chat.type}\n"
+                             f"Forum: {message.chat.is_forum}\n"
                              f"Link: {message.chat.invite_link}\n"
                              f"Username: {message.chat.username}\n"
                              f"Descrizione: {message.chat.description}\n")
 
 
 def main(api_key: str) -> None:
+    logger.info("Bot starting")
+
     application: Application = ApplicationBuilder().token(api_key).build()
 
     global links
@@ -594,6 +602,7 @@ def main(api_key: str) -> None:
     with session_maker.begin() as session:
         reload_settings(application, session, startup=True)
 
+    logger.info("Started Bot Long Polling")
     application.run_polling()
 
 
@@ -627,8 +636,13 @@ class BotConfig(BaseSettings):
 if __name__ == '__main__':
     config = BotConfig(_env_file=".env")
 
-    logging.basicConfig()
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    logger = logging.getLogger(BOT_PROCESS_NAME)
+    logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    handler.setFormatter(FORMATTER)
+    logger.addHandler(handler)
+
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARN)
 
     SessionMakerSingleton.initialize(config.database_url.unicode_string())
 
