@@ -310,6 +310,15 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await delete_message(message)
             return
 
+        if message.chat.type is ChatType.PRIVATE:
+            await message.reply_html(
+                emojize(
+                    f":x: Il comando <code>/activate</code> è utilizzabile esclusivamente in un gruppo.", language="alias"),
+                quote=False,
+            )
+            await message.delete()
+            return
+
         db_entry = session.query(BotChat.telegram_chat_id).filter_by(telegram_chat_id=message.chat.id).first()
 
         if db_entry is not None:
@@ -333,10 +342,24 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 me_admin = admin
                 break
 
-        def check(check_name: str, b: bool, prev: tuple[str, bool] = ("", True)):
-            line = f" • {check_name}: " + (":white_check_mark:" if b else ":x:") + "\n"
+        if me_admin is None:
+            # Error: the bot is not an admin in the group.
+            r = await message.reply_html(
+                emojize(
+                    f":x: Attualmente non sono un amministratore, per cui non mi è possibile proseguire con "
+                    f"l'attivazione del gruppo.", language="alias"),
+                quote=False,
+                message_thread_id=message.message_thread_id
+            )
+            logger.info(f"{r}")
+            return
 
-            return prev[0] + line, prev[1] and b
+        def check(check_name: str, b: bool | None, prev: tuple[str, bool] = ("", True)):
+            emoji = ":negative_squared_cross_mark:" if b is None else ":white_check_mark:" if b else ":x:"
+
+            line = f" • {check_name}: {emoji}\n"
+            activated = (b is None) or b
+            return prev[0] + line, prev[1] and activated
 
         checks = ("<b>Controlli pre-flight:</b>\n\n", True)
         checks = check("NOT Anonymous", not me_admin.is_anonymous, checks)
@@ -348,7 +371,8 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         checks = check("CAN Change info", me_admin.can_change_info, checks)
         checks = check("CAN Invite users", me_admin.can_invite_users, checks)
         checks = check("CAN Pin Messages", me_admin.can_pin_messages, checks)
-        checks = check("CAN Manage Topics", me_admin.can_manage_topics, checks)
+        _b = me_admin.can_manage_topics if message.chat.is_forum else None
+        checks = check("CAN Manage Topics", _b, checks)
 
         checks = (checks[0] + "\n", checks[1])
 
@@ -373,6 +397,7 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                              language="alias"),
                                      quote=False,
                                      message_thread_id=message.message_thread_id)
+            await delete_message(message)
         except DatabaseError as e:
             await message.reply_html(emojize(f"Si è verificato un errore :sob:\n"
                                              f"Ecco alcuni dettagli:\n\n"
