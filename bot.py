@@ -96,7 +96,7 @@ async def link_gruppi(update: Update, _):
 
     link = links.get(command)
     if link is None:
-        print(f"Command {command} not found")
+        logger.error(f"Requested command {command} not found")
         return
     # Got the correct link. Now let's see how to behave...
 
