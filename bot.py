@@ -21,13 +21,14 @@ from data.botchat import BotChat
 from data.botuser import BotUser, Role, Status
 from data.question import Question, Feedback
 from data.setting import Setting
-from data.utils import SQLAlchemyBase
 from session_maker import SessionMakerSingleton
 
 BOT_PROCESS_NAME = "bot"
 FORMATTER = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 BOT_ROLE_MASTER = "master"
+
+Base = declarative_base()
 
 
 class ResourceData:
@@ -671,6 +672,6 @@ if __name__ == '__main__':
 
     SessionMakerSingleton.initialize(config.database_url.unicode_string())
 
-    SQLAlchemyBase.metadata.create_all(SessionMakerSingleton.get_engine())
+    Base.metadata.create_all(SessionMakerSingleton.get_engine())
 
     main(config.telegram_api_key)

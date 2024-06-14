@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 import sqlalchemy as sa
-from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.orm import mapped_column, Mapped, declarative_base
 
-from data.utils import SQLAlchemyBase
+Base = declarative_base()
 
 
 @dataclass
-class Setting(SQLAlchemyBase):
+class Setting(Base):
     __tablename__ = "persistent_settings"
 
     setting_name: Mapped[str] = mapped_column(primary_key=True, nullable=False)

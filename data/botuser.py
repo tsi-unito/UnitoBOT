@@ -2,8 +2,9 @@ import enum
 from dataclasses import dataclass
 import sqlalchemy as sqla
 from sqlalchemy import Column
-from sqlalchemy.orm import Mapped, mapped_column
-from data.utils import SQLAlchemyBase
+from sqlalchemy.orm import Mapped, mapped_column, declarative_base
+
+Base = declarative_base()
 
 
 class Status(enum.Enum):
@@ -17,10 +18,10 @@ class Role(enum.Enum):
 
 
 @dataclass
-class BotUser(SQLAlchemyBase):
+class BotUser(Base):
     __tablename__ = "users"
 
-    telegram_user_id: int = Column(sqla.Integer, primary_key=True, index=True, unique=True, nullable=False)
+    telegram_user_id: int = Column(sqla.BigInteger, primary_key=True, index=True, unique=True, nullable=False)
     status: Status = Column(sqla.Enum(Status),
                             index=True, nullable=False, server_default=Status.ACTIVE.name, default=Status.ACTIVE)
     role: str | None = Column(sqla.Enum(Role), index=True, nullable=True)

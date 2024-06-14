@@ -2,13 +2,13 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import sqlalchemy as sa
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
 
-from data.utils import SQLAlchemyBase
+Base = declarative_base()
 
 
 @dataclass
-class Question(SQLAlchemyBase):
+class Question(Base):
     __tablename__ = "nlp_questions"
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)
@@ -31,7 +31,7 @@ class Question(SQLAlchemyBase):
         return f"<Question(id={self.id}, message_id={self.message_id}, user_id={self.user_id}, message={self.message}, date={self.date})>"
 
 
-class Feedback(SQLAlchemyBase):
+class Feedback(Base):
     __tablename__ = "feedbacks"
 
     id: Mapped[int] = mapped_column(primary_key=True, nullable=False)

@@ -3,12 +3,13 @@ from datetime import datetime
 
 import sqlalchemy as sa
 
-from sqlalchemy.orm import Mapped, mapped_column
-from data.utils import SQLAlchemyBase
+from sqlalchemy.orm import Mapped, mapped_column, declarative_base
+
+Base = declarative_base()
 
 
 @dataclass
-class BotChat(SQLAlchemyBase):
+class BotChat(Base):
     __tablename__ = "chats"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, nullable=False)
