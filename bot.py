@@ -1,18 +1,13 @@
 import logging
-import urllib.parse
-import os
 
-import sqlalchemy
 import telegram.error
 
 from emoji import emojize
-from pydantic import Field, PostgresDsn
-from pydantic_settings import BaseSettings
-from sqlalchemy import create_engine, select as sql_select
+from sqlalchemy import select as sql_select
 from sqlalchemy.exc import DatabaseError
-from sqlalchemy.orm import Session, registry
+from sqlalchemy.orm import Session, declarative_base
 from telegram import Update, MessageEntity, InlineKeyboardMarkup, InlineKeyboardButton, User as TelegramUser, \
-    ChatMemberAdministrator, CallbackQuery, ChatPermissions, User
+    ChatMemberAdministrator, CallbackQuery, ChatPermissions, User, Message, BotCommandScopeChat
 from telegram.constants import MessageEntityType, ParseMode, ChatType
 from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler, MessageHandler, filters, \
     CallbackQueryHandler, CallbackContext
@@ -139,7 +134,7 @@ async def link_gruppi(update: Update, _):
     await delete_message(message)
 
 
-async def delete_message(message):
+async def delete_message(message: Message):
     try:
         await message.delete()
     except telegram.error.BadRequest:
@@ -183,16 +178,19 @@ async def command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         payload = context.args
 
         if len(payload) <= 0:
-            await message.reply_text(
-                f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi"
+            await reply_message(
+                f"Ciao! Attualmente il bot è in sviluppo, per cui interagirci potrebbe portare a dei risultati inattesi",
+                message
             )
         else:
             match payload[0]:
                 case "help":
                     await send_help_message(update)
                 case "rapp":
+                    # todo replace with helper method
                     await send_rappresentanti_message(update)
                 case _:
+                    # todo replace with helper method
                     await message.reply_html(
                         f"Ciao! Attualmente la funzionalità che hai richiesto non è disponibile.\n"
                         f"Se credi che questo sia un errore, inoltra questo messaggio a @Stefa168.\n\n"
@@ -223,8 +221,7 @@ async def command_rappresentanti(update: Update, context: ContextTypes.DEFAULT_T
                                  message_thread_id=message_thread,
                                  disable_web_page_preview=True,
                                  reply_markup=keyboard)
-
-    await delete_message(message)
+        await delete_message(message)
 
 
 async def send_help_message(update: Update):
@@ -239,7 +236,7 @@ async def send_help_message(update: Update):
 
         text += _TEMPLATE.format(group_name=link.name, group_shortcuts=available_shortcuts)
 
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+    await reply_message(text, update.message)
 
 
 async def send_rappresentanti_message(update: Update):
@@ -297,6 +294,30 @@ async def reply_repo_appunti(update: Update, context: ContextTypes.DEFAULT_TYPE)
         session.commit()
 
 
+# todo add the possibility to quote and disable the deletion in that case
+async def reply_message(message: str, message_obj: Message, thread: bool = True, delete: bool = True,
+                        language: str = "alias") -> Message:
+    """
+    Replies to a message with a given text.
+
+    :param message: The message to send.
+    :param message_obj: The message to reply to.
+    :param thread: Whether to reply in the same thread.
+    :param delete: Whether to delete the original message replied to.
+    :param language: The language to use for the emojize function.
+
+    :return: The new message sent.
+    """
+    tid = message_obj.message_thread_id
+    new_message = await message_obj.reply_html(emojize(message, language=language),
+                                               quote=False,
+                                               message_thread_id=tid if thread else None)
+    if delete:
+        await delete_message(message_obj)
+
+    return new_message
+
+
 # noinspection DuplicatedCode
 async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
@@ -307,53 +328,35 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with session_maker.begin() as session:
         # master role is for who manages the bot.
         if not user_has_role(message.from_user, {Role.MASTER}, session):
-            logger.warning(f"A user tried to use /activate command.\n{message.from_user}\n{message.chat}")
-            # We might already be administrators in the group, try to delete it
-            await delete_message(message)
+            await report_unauthorized("activate", message)
             return
 
         if message.chat.type is ChatType.PRIVATE:
-            await message.reply_html(
-                emojize(
-                    f":x: Il comando <code>/activate</code> è utilizzabile esclusivamente in un gruppo.", language="alias"),
-                quote=False,
-            )
-            await message.delete()
+            await reply_message(f":x: Il comando <code>/activate</code> è utilizzabile esclusivamente in un gruppo.",
+                                message)
             return
 
         db_entry = session.query(BotChat.telegram_chat_id).filter_by(telegram_chat_id=message.chat.id).first()
 
         if db_entry is not None:
             user_mention = mention_user(message.from_user)
-
-            await message.reply_html(
-                emojize(f":warning: Il gruppo è già registrato {user_mention}!", language="alias"),
-                quote=False,
-                message_thread_id=message.message_thread_id)
-            await delete_message(message)
-            session.close()
+            await reply_message(f":warning: Il gruppo è già registrato {user_mention}!", message)
             return
 
         admins: list[ChatMemberAdministrator] = list(await context.bot.get_chat_administrators(message.chat_id))
 
         me: TelegramUser = await context.bot.getMe()
-        me_admin: ChatMemberAdministrator | None = None
-
-        for admin in admins:
-            if me.id == admin.user.id:
-                me_admin = admin
-                break
+        me_admin = next((admin for admin in admins if me.id == admin.user.id), None)
 
         if me_admin is None:
             # Error: the bot is not an admin in the group.
-            r = await message.reply_html(
-                emojize(
-                    f":x: Attualmente non sono un amministratore, per cui non mi è possibile proseguire con "
-                    f"l'attivazione del gruppo.", language="alias"),
-                quote=False,
-                message_thread_id=message.message_thread_id
+            r = await reply_message(
+                f":x: Attualmente non sono un amministratore, per cui non mi è possibile proseguire con "
+                f"l'attivazione del gruppo.",
+                message,
+                delete=False
             )
-            logger.info(f"{r}")
+            logger.warning(f"Bot is not an admin in the group {message.chat}", r)
             return
 
         def check(check_name: str, b: bool | None, prev: tuple[str, bool] = ("", True)):
@@ -384,9 +387,7 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             checks = (checks[0] + _t, checks[1])
 
-            return await message.reply_html(text=emojize(checks[0], language="alias"),
-                                            quote=False,
-                                            message_thread_id=message.message_thread_id)
+            return await reply_message(checks[0], message)
 
         new_chat = BotChat(telegram_chat_id=message.chat_id)
         session.add(new_chat)
@@ -394,17 +395,14 @@ async def command_activate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             session.commit()
 
-            await message.reply_html(emojize("Successo! :rocket:\n"
-                                             "Il gruppo è stato aggiunto al sistema.",
-                                             language="alias"),
-                                     quote=False,
-                                     message_thread_id=message.message_thread_id)
-            await delete_message(message)
+            await reply_message("Successo! :rocket:\nIl gruppo è stato aggiunto al sistema.", message)
         except DatabaseError as e:
-            await message.reply_html(emojize(f"Si è verificato un errore :sob:\n"
-                                             f"Ecco alcuni dettagli:\n\n"
-                                             f"<code>{str(e.orig).splitlines()[0]}</code>",
-                                             language="alias"))
+            await reply_message(f"Si è verificato un errore :sob:\n"
+                                f"Ecco alcuni dettagli:\n\n"
+                                f"<code>{str(e.orig).splitlines()[0]}</code>",
+                                message,
+                                delete=False
+                                )
             logger.exception(f"Couldn't activate group {message.chat}", e)
             session.rollback()
 
@@ -413,6 +411,7 @@ def mention_user(user: User) -> str:
     return telegram.helpers.mention_html(user.id, user.full_name)
 
 
+# todo replace with emoji reactions
 async def handle_auto_feedback(update: Update, context: CallbackContext):
     session_maker = SessionMakerSingleton.get_session_maker()
 
@@ -469,26 +468,23 @@ async def command_reload_settings(update: Update, context: CallbackContext):
         enabled, disabled = reload_settings(context.application, session)
 
         if len(enabled) + len(disabled) > 0:
-            reply_message = f"{user_mention} ho ricaricato le impostazioni!\nEcco i cambiamenti:\n\n"
+            response = f"{user_mention} ho ricaricato le impostazioni!\nEcco i cambiamenti:\n\n"
 
             if len(enabled) > 0:
-                reply_message += "<b>:white_check_mark: Funzionalità abilitate</b>:\n"
+                response += "<b>:white_check_mark: Funzionalità abilitate</b>:\n"
 
                 for feature in enabled:
-                    reply_message += f" • {feature}\n"
+                    response += f" • {feature}\n"
 
             if len(disabled) > 0:
-                reply_message += "<b>:x: Funzionalità disabilitate</b>:\n"
+                response += "<b>:x: Funzionalità disabilitate</b>:\n"
 
                 for feature in disabled:
-                    reply_message += f" • {feature}\n"
+                    response += f" • {feature}\n"
         else:
-            reply_message = f"Non c'era nulla da cambiare nelle impostazioni {user_mention}. :confused:"
+            response = f"Non c'era nulla da cambiare nelle impostazioni {user_mention}. :confused:"
 
-        await message.reply_html(emojize(reply_message, language="alias"),
-                                 quote=False,
-                                 message_thread_id=message.message_thread_id)
-        await message.delete()
+        await reply_message(response, message, delete=False)
 
 
 def reload_settings(application: telegram.ext.Application, session: Session, startup=False) \
@@ -498,6 +494,17 @@ def reload_settings(application: telegram.ext.Application, session: Session, sta
     # First of all let's reload all the settings from the DB
     settings = load_config_from_db(session)
     enabled_features, disabled_features = [], []
+
+    _handlers = {
+        # todo Needs substantial improvements
+        "automatic_notes_suggestion":
+            MessageHandler(
+                callback=reply_repo_appunti,
+                filters=filters.Regex(
+                    "(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"
+                )
+            )
+    }
 
     # Now we iterate over every handler
     for setting_name, handler in _handlers.items():
@@ -528,8 +535,8 @@ def reload_settings(application: telegram.ext.Application, session: Session, sta
 
 
 async def command_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.message
-    from_user = message.from_user
+    message: Message = update.message
+    from_user: User = message.from_user
 
     banned_user: User
     # Let's retrieve the user_id of the soon-banned user.
@@ -541,10 +548,11 @@ async def command_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if len(mentions) <= 0:
             # we need at least one user...
-            await message.reply_html(emojize(
-                f"{mention_user(from_user)} devi specificare un utente da bannare dopo il comando. "
-                f"Puoi anche usarlo rispondendo all'utente da bannare."))
-            await delete_message(message)
+            await reply_message(
+                f"{mention_user(from_user)} devi specificare un utente da bannare dopo il comando.\n"
+                f"Puoi anche usarlo rispondendo all'utente da bannare.",
+                message
+            )
             return
 
         else:
@@ -576,12 +584,14 @@ async def command_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 continue
 
-            print(f"User {banned_user.id} banned from chat {group.telegram_chat_id}: {result}")
+            logger.info(f"User {banned_user.id} banned from chat {group.telegram_chat_id}: {result}")
 
         banned_bot_user = BotUser(banned_user.id, status=Status.BANNED)
         session.add(banned_bot_user)
 
-    await message.reply_html(f"L'utente {mention_user(banned_user)} è stato bannato dal Cosmo di DiUniTO.")
+    await reply_message(f"L'utente {mention_user(banned_user)} è stato bannato dal Cosmo di DiUniTO.",
+                        message,
+                        delete=False)
 
 
 async def command_get_group_infos(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -591,9 +601,7 @@ async def command_get_group_infos(update: Update, context: ContextTypes.DEFAULT_
     session: Session
     with session_maker.begin() as session:
         if not user_has_role(message.from_user, {Role.MASTER, Role.ADMIN}, session):
-            logger.warning(f"A user tried to use /activate command.\n{message.from_user}\n{message.chat}")
-            # We might already be administrators in the group, try to delete it
-            await delete_message(message)
+            await report_unauthorized("activate", message)
             return
 
     await reply_message("Ecco le informazioni del gruppo:\n\n"
@@ -673,7 +681,7 @@ if __name__ == '__main__':
     config = BotConfig(_env_file=".env")
 
     logger = logging.getLogger(BOT_PROCESS_NAME)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler()
     handler.setFormatter(FORMATTER)
     logger.addHandler(handler)
