@@ -17,6 +17,7 @@ from telegram.constants import MessageEntityType, ParseMode, ChatType
 from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandHandler, MessageHandler, filters, \
     CallbackQueryHandler, CallbackContext
 
+from config import BotConfig
 from data.botchat import BotChat
 from data.botuser import BotUser, Role, Status
 from data.question import Question, Feedback
@@ -652,11 +653,6 @@ _handlers = {
             )
         )
 }
-
-
-class BotConfig(BaseSettings):
-    telegram_api_key: str = Field(..., env="TELEGRAM_API_KEY")
-    database_url: PostgresDsn = Field(..., env="DATABASE_URL")
 
 
 if __name__ == '__main__':
