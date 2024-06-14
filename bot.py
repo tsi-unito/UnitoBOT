@@ -625,8 +625,6 @@ async def report_unauthorized(command: str, message: Message, delete: bool = Tru
 async def after_init(app: Application):
     # todo investigate why it doesn't work
     from telegram import Bot
-    main_group_scope = BotCommandScopeChat("-1001120794909")
-    logger.debug(main_group_scope)
     bot: Bot = app.bot
 
     def links_to_commands() -> list[tuple[str, str]]:
@@ -634,9 +632,16 @@ async def after_init(app: Application):
 
     cmds = links_to_commands()
 
-    r = await bot.set_my_commands(cmds, scope=main_group_scope)
+    session_maker = SessionMakerSingleton.get_session_maker()
 
-    logger.info(f"commands set up {r}")
+    with session_maker.begin() as session:
+        chats: list[BotChat] = session.query(BotChat).all()
+        for chat in chats:
+            scope = BotCommandScopeChat(chat.telegram_chat_id)
+            r = await bot.set_my_commands(cmds, scope=scope)
+            logger.debug(f"Setting up commands for chat {chat.telegram_chat_id}: {r}")
+
+    logger.info(f"commands set up")
 
 
 def main(api_key: str) -> None:
