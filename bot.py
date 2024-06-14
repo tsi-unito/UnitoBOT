@@ -596,14 +596,39 @@ async def command_get_group_infos(update: Update, context: ContextTypes.DEFAULT_
             await delete_message(message)
             return
 
-    await message.reply_html("Ecco le informazioni del gruppo:\n\n"
-                             f"ID: {message.chat.id}\n"
-                             f"Nome: {message.chat.title}\n"
-                             f"Tipo: {message.chat.type}\n"
-                             f"Forum: {message.chat.is_forum}\n"
-                             f"Link: {message.chat.invite_link}\n"
-                             f"Username: {message.chat.username}\n"
-                             f"Descrizione: {message.chat.description}\n")
+    await reply_message("Ecco le informazioni del gruppo:\n\n"
+                        f"ID: {message.chat.id}\n"
+                        f"Nome: {message.chat.title}\n"
+                        f"Tipo: {message.chat.type}\n"
+                        f"Forum: {message.chat.is_forum}\n"
+                        f"Link: {message.chat.invite_link}\n"
+                        f"Username: {message.chat.username}\n"
+                        f"Descrizione: {message.chat.description}\n",
+                        message)
+
+
+async def report_unauthorized(command: str, message: Message, delete: bool = True):
+    logger.warning(f"A user tried to use /{command} command.\n{message.from_user}\n{message.chat}")
+    # We might already be administrators in the group, try to delete it
+    if delete:
+        await delete_message(message)
+
+
+async def after_init(app: Application):
+    # todo investigate why it doesn't work
+    from telegram import Bot
+    main_group_scope = BotCommandScopeChat("-1001120794909")
+    logger.debug(main_group_scope)
+    bot: Bot = app.bot
+
+    def links_to_commands() -> list[tuple[str, str]]:
+        return [(d.shortcut[0], d.name) for d in _initialization_link_list]
+
+    cmds = links_to_commands()
+
+    r = await bot.set_my_commands(cmds, scope=main_group_scope)
+
+    logger.info(f"commands set up {r}")
 
 
 def main(api_key: str) -> None:
@@ -630,6 +655,7 @@ def main(api_key: str) -> None:
         reload_settings(application, session, startup=True)
 
     logger.info("Started Bot Long Polling")
+    application.post_init = after_init
     application.run_polling()
 
 
@@ -641,18 +667,6 @@ def load_config_from_db(session: Session) -> dict[str, str]:
         ss[s.setting_name] = s.value
 
     return ss
-
-
-_handlers = {
-    # todo Needs substantial improvements
-    "automatic_notes_suggestion":
-        MessageHandler(
-            callback=reply_repo_appunti,
-            filters=filters.Regex(
-                "(vendo|cerco|compro|avete|qualcuno.*ha|Vendo|Cerco|Compro|Avete|Qualcuno.*ha).*appunti.*"
-            )
-        )
-}
 
 
 if __name__ == '__main__':
