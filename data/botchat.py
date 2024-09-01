@@ -3,9 +3,9 @@ from datetime import datetime
 
 import sqlalchemy as sa
 
-from sqlalchemy.orm import Mapped, mapped_column, declarative_base
+from sqlalchemy.orm import Mapped, mapped_column
 
-Base = declarative_base()
+from bot import Base
 
 
 @dataclass

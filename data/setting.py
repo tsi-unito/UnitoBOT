@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 from sqlalchemy.orm import mapped_column, Mapped, declarative_base
 
-Base = declarative_base()
+from bot import Base
 
 
 @dataclass

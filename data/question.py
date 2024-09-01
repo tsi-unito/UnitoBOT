@@ -4,7 +4,7 @@ from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
 
-Base = declarative_base()
+from bot import Base
 
 
 @dataclass

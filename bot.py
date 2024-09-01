@@ -13,6 +13,7 @@ from telegram.ext import ContextTypes, Application, ApplicationBuilder, CommandH
     CallbackQueryHandler, CallbackContext
 
 from config import BotConfig
+from data.sqla_base import Base
 from data.botchat import BotChat
 from data.botuser import BotUser, Role, Status
 from data.question import Question, Feedback
@@ -23,8 +24,6 @@ BOT_PROCESS_NAME = "bot"
 FORMATTER = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 BOT_ROLE_MASTER = "master"
-
-Base = declarative_base()
 
 
 class ResourceData:
@@ -558,8 +557,11 @@ async def command_ban_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             banned_user = mentions[0].user
 
-    BANNED_PERMISSIONS = ChatPermissions(False, False, False, False, False, False, False, False, False, False, False,
-                                         False, False, False)
+    BANNED_PERMISSIONS = ChatPermissions(False, False, False,
+                                         False, False, False,
+                                         False, False, False,
+                                         False, False, False,
+                                         False, False)
 
     session_maker = SessionMakerSingleton.get_session_maker()
     session: Session
