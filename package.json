@@ -1,0 +1,32 @@
+{
+  "name": "unitobot",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --no-warnings=ExperimentalWarning --loader ts-node/esm src/bot.ts",
+    "test": "vitest",
+    "dev-server": "tsc-watch --noClear -p ./tsconfig.json --onSuccess \"npm run start\""
+  },
+  "devDependencies": {
+    "@mikro-orm/cli": "^6.5.2",
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
+    "tsc-watch": "^7.1.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "grammy": "^1.38.2",
+    "@grammyjs/chat-members": "^1.2.0",
+    "telegraf-middleware-console-time": "^3.0.0",
+    "@mikro-orm/core": "^6.5.2",
+    "@mikro-orm/postgresql": "^6.5.2",
+    "@mikro-orm/reflection": "^6.5.2",
+    "@mikro-orm/sqlite": "^6.5.2"
+  }
+}

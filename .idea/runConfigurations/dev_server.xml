@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="dev-server" type="js.build_tools.npm" nameIsGenerated="true">
+    <package-json value="$PROJECT_DIR$/package.json" />
+    <command value="run" />
+    <scripts>
+      <script value="dev-server" />
+    </scripts>
+    <node-interpreter value="project" />
+    <envs>
+      <env name="DATABASE_URL" value="postgresql://postgres:2o!&amp;@trOsA!@192.168.2.11:5432/postgres" />
+    </envs>
+    <method v="2" />
+  </configuration>
+</component>
