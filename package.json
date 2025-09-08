@@ -42,6 +42,7 @@
     "@mikro-orm/postgresql": "^6.5.2",
     "@mikro-orm/reflection": "^6.5.2",
     "@mikro-orm/sqlite": "^6.5.2",
+    "dotenv": "^17.2.2",
     "grammy": "^1.38.2",
     "telegraf-middleware-console-time": "^3.0.0"
   }

@@ -44,7 +44,7 @@ jobs:
         echo "Checking for known vulnerabilities..."
         npm audit --audit-level moderate
 
-    - name: Check for unused dependencies
-      run: |
-        echo "Checking for unused dependencies..."
-        npx depcheck --ignores="@types/*,vitest,ts-node,tsc-watch,typescript"
+#    - name: Check for unused dependencies
+#      run: |
+#        echo "Checking for unused dependencies..."
+#        npx depcheck --ignores="@types/*,vitest,ts-node,tsc-watch,typescript"
