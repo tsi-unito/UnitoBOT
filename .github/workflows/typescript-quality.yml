@@ -1,0 +1,50 @@
+name: TypeScript Quality Checks
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  typescript-quality:
+    name: TypeScript Quality Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Generate TypeScript declaration files
+      run: npm run build
+
+    - name: Check for TypeScript strict mode compliance
+      run: |
+        echo "Checking TypeScript strict mode compliance..."
+        npx tsc --noEmit --strict
+
+    - name: Bundle size check
+      run: |
+        echo "Checking bundle size..."
+        npm run build
+        du -sh dist/
+        find dist/ -name "*.js" -exec wc -c {} + | sort -n
+
+    - name: Dependency vulnerability check
+      run: |
+        echo "Checking for known vulnerabilities..."
+        npm audit --audit-level moderate
+
+    - name: Check for unused dependencies
+      run: |
+        echo "Checking for unused dependencies..."
+        npx depcheck --ignores="@types/*,vitest,ts-node,tsc-watch,typescript"

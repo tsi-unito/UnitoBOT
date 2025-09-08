@@ -1,15 +1,15 @@
-import {Entity, OptionalProps, PrimaryKey, Property} from '@mikro-orm/core';
+import { Entity, OptionalProps, PrimaryKey, Property } from '@mikro-orm/core';
 
-@Entity({tableName: 'grammy_kv'})
+@Entity({ tableName: 'grammy_kv' })
 export class KvEntity {
-  [OptionalProps]?: 'updatedAt'
+  [OptionalProps]?: 'updatedAt';
 
   @PrimaryKey()
   key!: string;
 
-  @Property({type: 'jsonb'})
+  @Property({ type: 'jsonb' })
   value!: unknown;
 
-  @Property({defaultRaw: 'now()', onUpdate: () => new Date()})
+  @Property({ defaultRaw: 'now()', onUpdate: () => new Date() })
   updatedAt: Date = new Date();
 }

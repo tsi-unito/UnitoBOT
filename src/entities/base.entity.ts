@@ -1,4 +1,4 @@
-import {type Opt, OptionalProps, PrimaryKey, Property} from '@mikro-orm/core';
+import { type Opt, PrimaryKey, Property } from '@mikro-orm/core';
 
 export abstract class BaseEntity {
   @PrimaryKey()
@@ -7,6 +7,6 @@ export abstract class BaseEntity {
   @Property()
   createdAt: Opt<Date> = new Date();
 
-  @Property({onUpdate: () => new Date()})
+  @Property({ onUpdate: () => new Date() })
   updatedAt: Opt<Date> = new Date();
 }
