@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BaseEntity } from './base.entity.js';
+import { BaseEntity } from '../../src/entities/base.entity.js';
 
 // Create a concrete implementation for testing
 class TestEntity extends BaseEntity {}

@@ -44,8 +44,16 @@
   "include": [
     "./src/**/*.ts"
   ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "test",
+    "tests",
+    "node_modules",
+    "dist"
+  ],
   "ts-node": {
     "esm": true,
-    "transpileOnly": true,
+    "transpileOnly": false
   }
 }
