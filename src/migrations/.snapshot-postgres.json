@@ -1,0 +1,672 @@
+{
+  "namespaces": [
+    "public"
+  ],
+  "name": "public",
+  "tables": [
+    {
+      "columns": {
+        "telegram_user_id": {
+          "name": "telegram_user_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "mappedType": "bigint"
+        },
+        "status": {
+          "name": "status",
+          "type": "bot_user_status",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "nativeEnumName": "bot_user_status",
+          "default": "'ACTIVE'",
+          "enumItems": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ],
+          "mappedType": "enum"
+        }
+      },
+      "name": "bot_user",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "bot_user_pkey",
+          "columnNames": [
+            "telegram_user_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "banned_user_telegram_user_id": {
+          "name": "banned_user_telegram_user_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "bigint"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        },
+        "by_user_telegram_user_id": {
+          "name": "by_user_telegram_user_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "bigint"
+        },
+        "until": {
+          "name": "until",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "length": 6,
+          "mappedType": "datetime"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "mappedType": "datetime"
+        }
+      },
+      "name": "group_bans",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "group_bans_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "group_bans_banned_user_telegram_user_id_foreign": {
+          "constraintName": "group_bans_banned_user_telegram_user_id_foreign",
+          "columnNames": [
+            "banned_user_telegram_user_id"
+          ],
+          "localTableName": "public.group_bans",
+          "referencedColumnNames": [
+            "telegram_user_id"
+          ],
+          "referencedTableName": "public.bot_user",
+          "createForeignKeyConstraint": true,
+          "updateRule": "cascade"
+        },
+        "group_bans_by_user_telegram_user_id_foreign": {
+          "constraintName": "group_bans_by_user_telegram_user_id_foreign",
+          "columnNames": [
+            "by_user_telegram_user_id"
+          ],
+          "localTableName": "public.group_bans",
+          "referencedColumnNames": [
+            "telegram_user_id"
+          ],
+          "referencedTableName": "public.bot_user",
+          "createForeignKeyConstraint": true,
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        }
+      },
+      "name": "bot_user_authorizations",
+      "schema": "public",
+      "indexes": [
+        {
+          "columnNames": [
+            "name"
+          ],
+          "composite": false,
+          "keyName": "bot_user_authorizations_name_unique",
+          "constraint": true,
+          "primary": false,
+          "unique": true
+        },
+        {
+          "keyName": "bot_user_authorizations_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "bot_user_telegram_user_id": {
+          "name": "bot_user_telegram_user_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "bigint"
+        },
+        "bot_user_authorizations_id": {
+          "name": "bot_user_authorizations_id",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "integer"
+        }
+      },
+      "name": "bot_user_additional_authorizations",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "bot_user_additional_authorizations_pkey",
+          "columnNames": [
+            "bot_user_telegram_user_id",
+            "bot_user_authorizations_id"
+          ],
+          "composite": true,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "bot_user_additional_authorizations_bot_user_tele_93149_foreign": {
+          "constraintName": "bot_user_additional_authorizations_bot_user_tele_93149_foreign",
+          "columnNames": [
+            "bot_user_telegram_user_id"
+          ],
+          "localTableName": "public.bot_user_additional_authorizations",
+          "referencedColumnNames": [
+            "telegram_user_id"
+          ],
+          "referencedTableName": "public.bot_user",
+          "createForeignKeyConstraint": true,
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        },
+        "bot_user_additional_authorizations_bot_user_auth_4afbc_foreign": {
+          "constraintName": "bot_user_additional_authorizations_bot_user_auth_4afbc_foreign",
+          "columnNames": [
+            "bot_user_authorizations_id"
+          ],
+          "localTableName": "public.bot_user_additional_authorizations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.bot_user_authorizations",
+          "createForeignKeyConstraint": true,
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "json"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        }
+      },
+      "name": "grammy_kv",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "grammy_kv_pkey",
+          "columnNames": [
+            "key"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 255,
+          "mappedType": "string"
+        }
+      },
+      "name": "management_team",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "management_team_pkey",
+          "columnNames": [
+            "id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {},
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "management_team_id": {
+          "name": "management_team_id",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "bot_user_telegram_user_id": {
+          "name": "bot_user_telegram_user_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "bigint"
+        }
+      },
+      "name": "management_team_members",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "management_team_members_pkey",
+          "columnNames": [
+            "management_team_id",
+            "bot_user_telegram_user_id"
+          ],
+          "composite": true,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "management_team_members_management_team_id_foreign": {
+          "constraintName": "management_team_members_management_team_id_foreign",
+          "columnNames": [
+            "management_team_id"
+          ],
+          "localTableName": "public.management_team_members",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.management_team",
+          "createForeignKeyConstraint": true,
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        },
+        "management_team_members_bot_user_telegram_user_id_foreign": {
+          "constraintName": "management_team_members_bot_user_telegram_user_id_foreign",
+          "columnNames": [
+            "bot_user_telegram_user_id"
+          ],
+          "localTableName": "public.management_team_members",
+          "referencedColumnNames": [
+            "telegram_user_id"
+          ],
+          "referencedTableName": "public.bot_user",
+          "createForeignKeyConstraint": true,
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "management_team_id": {
+          "name": "management_team_id",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "integer"
+        },
+        "bot_user_authorizations_id": {
+          "name": "bot_user_authorizations_id",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "integer"
+        }
+      },
+      "name": "management_team_authorizations",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "management_team_authorizations_pkey",
+          "columnNames": [
+            "management_team_id",
+            "bot_user_authorizations_id"
+          ],
+          "composite": true,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "management_team_authorizations_management_team_id_foreign": {
+          "constraintName": "management_team_authorizations_management_team_id_foreign",
+          "columnNames": [
+            "management_team_id"
+          ],
+          "localTableName": "public.management_team_authorizations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.management_team",
+          "createForeignKeyConstraint": true,
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        },
+        "management_team_authorizations_bot_user_authoriz_14e58_foreign": {
+          "constraintName": "management_team_authorizations_bot_user_authoriz_14e58_foreign",
+          "columnNames": [
+            "bot_user_authorizations_id"
+          ],
+          "localTableName": "public.management_team_authorizations",
+          "referencedColumnNames": [
+            "id"
+          ],
+          "referencedTableName": "public.bot_user_authorizations",
+          "createForeignKeyConstraint": true,
+          "deleteRule": "cascade",
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    },
+    {
+      "columns": {
+        "telegram_group_id": {
+          "name": "telegram_group_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": true,
+          "primary": true,
+          "nullable": false,
+          "mappedType": "bigint"
+        },
+        "registrar_telegram_user_id": {
+          "name": "registrar_telegram_user_id",
+          "type": "bigint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "mappedType": "bigint"
+        },
+        "registered_at": {
+          "name": "registered_at",
+          "type": "timestamptz",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "length": 6,
+          "default": "now()",
+          "mappedType": "datetime"
+        }
+      },
+      "name": "registered_group",
+      "schema": "public",
+      "indexes": [
+        {
+          "keyName": "registered_group_pkey",
+          "columnNames": [
+            "telegram_group_id"
+          ],
+          "composite": false,
+          "constraint": true,
+          "primary": true,
+          "unique": true
+        }
+      ],
+      "checks": [],
+      "foreignKeys": {
+        "registered_group_registrar_telegram_user_id_foreign": {
+          "constraintName": "registered_group_registrar_telegram_user_id_foreign",
+          "columnNames": [
+            "registrar_telegram_user_id"
+          ],
+          "localTableName": "public.registered_group",
+          "referencedColumnNames": [
+            "telegram_user_id"
+          ],
+          "referencedTableName": "public.bot_user",
+          "createForeignKeyConstraint": true,
+          "updateRule": "cascade"
+        }
+      },
+      "nativeEnums": {
+        "bot_user_status": {
+          "name": "bot_user_status",
+          "schema": "public",
+          "items": [
+            "ACTIVE",
+            "BANNED",
+            "OMNIBANNED"
+          ]
+        }
+      }
+    }
+  ],
+  "nativeEnums": {
+    "bot_user_status": {
+      "name": "bot_user_status",
+      "schema": "public",
+      "items": [
+        "ACTIVE",
+        "BANNED",
+        "OMNIBANNED"
+      ]
+    }
+  }
+}

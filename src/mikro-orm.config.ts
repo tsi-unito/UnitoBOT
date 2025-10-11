@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
-// import {type Options, SqliteDriver} from '@mikro-orm/sqlite';
-import {TsMorphMetadataProvider} from '@mikro-orm/reflection';
-import {type Options, PostgreSqlDriver} from "@mikro-orm/postgresql";
+import { TsMorphMetadataProvider } from '@mikro-orm/reflection';
+import { type Options, PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { Migrator } from '@mikro-orm/migrations';
 
-dotenv.config({path: ".env"});
+dotenv.config({ path: '.env' });
 
 const config: Options = {
+  extensions: [Migrator],
   // for simplicity, we use the SQLite database, as it's available pretty much everywhere
   driver: PostgreSqlDriver,
   clientUrl: process.env.DATABASE_URL,

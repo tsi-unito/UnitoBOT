@@ -5,11 +5,13 @@ A Telegram bot built with TypeScript and Grammy framework.
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js 18.x or higher
 - npm or yarn
 - PostgreSQL database
 
 ### Installation
+
 1. Clone the repository
 2. Install dependencies:
    ```bash
@@ -19,6 +21,10 @@ A Telegram bot built with TypeScript and Grammy framework.
    ```
    TELEGRAM_API_KEY=<API KEY FROM BotFather>
    DATABASE_URL=postgresql://unito_bot:password@localhost:5432/unito_bot
+   ```
+4. Apply the DB migrations on the dev DB by running:
+   ```
+   npm run mikro-orm migration:up
    ```
 
 ### Available Scripts
